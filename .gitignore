@@ -1,0 +1,18 @@
+node_modules/
+dist/
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/
+*.log
+.env
+.env.*
+!.env.example
+# Demo rejim sozlamasi (maxfiy narsa yo'q): npm run dev:mock
+!.env.mock
+backend/target/
+backend/.env
+backend/.local/
+backend/uploads/
+
+# Zaxira nusxalar (scripts/backup.ps1)
+backups/

@@ -1,0 +1,26 @@
+# /etc/systemd/system/oltin-liga.service
+# O'rnatish: sudo systemctl daemon-reload && sudo systemctl enable --now oltin-liga
+[Unit]
+Description=Payariq Oltin Ligasi
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+User=liga
+Group=liga
+WorkingDirectory=/opt/oltin-liga
+# .env shu papkada: ilova uni o'zi o'qiydi (DB_URL, DB_PASSWORD, MEDIA_DIR ...)
+ExecStart=/usr/bin/java -Xms256m -Xmx512m -jar /opt/oltin-liga/oltin-liga.jar --spring.profiles.active=prod
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=10
+
+# Xavfsizlik: ilova faqat o'z papkasiga yoza oladi
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/oltin-liga/media /opt/oltin-liga/logs
+
+[Install]
+WantedBy=multi-user.target

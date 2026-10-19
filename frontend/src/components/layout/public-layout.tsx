@@ -1,0 +1,299 @@
+import { BookOpen, Archive,
+  CalendarDays,
+  ChartColumn,
+  ChevronRight,
+  Crown,
+  Handshake,
+  House,
+  Info,
+  ListOrdered,
+  LogIn,
+  Menu,
+  Network,
+  Newspaper,
+  Shield,
+  Trophy,
+  UserRound,
+} from "lucide-react"
+import { useState } from "react"
+import { Link, NavLink, Outlet, useLocation } from "react-router"
+import { useSponsors } from "@/api/hooks"
+import { IS_DEMO_MODE } from "@/api/client"
+import { EmptyState } from "@/components/league/states"
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { useSeason } from "@/hooks/use-season"
+import { useLiveUpdates } from "@/hooks/use-live-updates"
+import { cn } from "@/lib/utils"
+import { LeagueMark, Logo, SeasonSelect, ThemeToggle } from "./brand"
+import { ScrollToTop } from "./scroll-to-top"
+
+const MAIN_NAV = [
+  { to: "/", label: "Asosiy", icon: House, end: true },
+  { to: "/oyinlar", label: "O‘yinlar", icon: CalendarDays },
+  { to: "/jadval", label: "Jadval", icon: ListOrdered },
+  { to: "/pley-off", label: "Pley-off", icon: Network },
+  { to: "/jamoalar", label: "Jamoalar", icon: Shield },
+  { to: "/statistika", label: "Statistika", icon: ChartColumn },
+  { to: "/yangiliklar", label: "Yangiliklar", icon: Newspaper },
+]
+
+const MORE_NAV = [
+  { to: "/futbolchilar", label: "Futbolchilar", icon: UserRound },
+  { to: "/mavsumlar", label: "Mavsumlar arxivi", icon: Archive },
+  { to: "/chempionlar", label: "Chempionlar tarixi", icon: Crown },
+  { to: "/homiylar", label: "Homiylar", icon: Handshake },
+  { to: "/nizom", label: "Musobaqa nizomi", icon: BookOpen },
+  { to: "/liga-haqida", label: "Liga haqida", icon: Info },
+]
+
+const BOTTOM_NAV = [
+  { to: "/", label: "Asosiy", icon: House, end: true },
+  { to: "/oyinlar", label: "O‘yinlar", icon: CalendarDays },
+  { to: "/jadval", label: "Jadval", icon: ListOrdered },
+  { to: "/statistika", label: "Statistika", icon: ChartColumn },
+]
+
+function DesktopNav() {
+  return (
+    <nav aria-label="Asosiy menyu" className="hidden lg:block">
+      <ul className="flex items-center gap-0.5">
+        {[...MAIN_NAV, { to: "/mavsumlar", label: "Arxiv", icon: Archive }].map((item) => (
+          <li key={item.to}>
+            <NavLink
+              to={item.to}
+              end={"end" in item ? item.end : false}
+              className={({ isActive }) =>
+                cn(
+                  "relative block rounded-md px-3 py-2 text-sm font-semibold text-band-muted transition-colors hover:text-band-foreground",
+                  isActive &&
+                    "text-band-foreground after:absolute after:inset-x-3 after:-bottom-[13px] after:h-[3px] after:rounded-full after:bg-gold-400",
+                )
+              }
+            >
+              {item.label}
+            </NavLink>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  )
+}
+
+function MoreSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const items = [...MAIN_NAV.filter((i) => !BOTTOM_NAV.some((b) => b.to === i.to)), ...MORE_NAV]
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="bottom" className="max-h-[85dvh] overflow-y-auto rounded-t-2xl pb-safe">
+        <SheetHeader className="pb-1 text-left">
+          <SheetTitle className="font-display text-xl">Bo‘limlar</SheetTitle>
+          <SheetDescription>Liga sahifalari va mavsumlar tarixi</SheetDescription>
+        </SheetHeader>
+        <nav aria-label="Qo‘shimcha bo‘limlar" className="px-2 pb-4">
+          <ul className="grid grid-cols-1 gap-0.5 min-[420px]:grid-cols-2">
+            {items.map((item) => (
+              <li key={item.to}>
+                <Link
+                  to={item.to}
+                  onClick={() => onOpenChange(false)}
+                  className="flex min-h-12 items-center gap-3 rounded-lg px-3 font-medium hover:bg-muted"
+                >
+                  <item.icon className="size-5 text-muted-foreground" aria-hidden="true" />
+                  {item.label}
+                  <ChevronRight className="ml-auto size-4 text-muted-foreground min-[420px]:hidden" aria-hidden="true" />
+                </Link>
+              </li>
+            ))}
+            <li>
+              <Link
+                to="/admin"
+                onClick={() => onOpenChange(false)}
+                className="flex min-h-12 items-center gap-3 rounded-lg px-3 font-medium text-muted-foreground hover:bg-muted"
+              >
+                <LogIn className="size-5" aria-hidden="true" />
+                Tashkilotchilar uchun
+              </Link>
+            </li>
+          </ul>
+        </nav>
+      </SheetContent>
+    </Sheet>
+  )
+}
+
+function BottomNav() {
+  const [open, setOpen] = useState(false)
+  const location = useLocation()
+  const moreActive = ![...BOTTOM_NAV].some((i) => (i.end ? location.pathname === i.to : location.pathname.startsWith(i.to)))
+  return (
+    <>
+      <nav
+        aria-label="Pastki menyu"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 pb-safe backdrop-blur supports-[backdrop-filter]:bg-card/85 lg:hidden"
+      >
+        <ul className="mx-auto grid max-w-lg grid-cols-5">
+          {BOTTOM_NAV.map((item) => (
+            <li key={item.to}>
+              <NavLink
+                to={item.to}
+                end={item.end}
+                className={({ isActive }) =>
+                  cn(
+                    "flex h-14 flex-col items-center justify-center gap-0.5 text-2xs font-medium text-muted-foreground transition-colors",
+                    isActive && "font-bold text-primary dark:text-gold-400",
+                  )
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    <span className={cn("flex h-6 w-11 items-center justify-center rounded-full transition-colors", isActive && "bg-secondary")}>
+                      <item.icon className="size-[19px]" aria-hidden="true" />
+                    </span>
+                    {item.label}
+                  </>
+                )}
+              </NavLink>
+            </li>
+          ))}
+          <li>
+            <button
+              type="button"
+              onClick={() => setOpen(true)}
+              aria-haspopup="dialog"
+              className={cn(
+                "flex h-14 w-full flex-col items-center justify-center gap-0.5 text-2xs font-medium text-muted-foreground",
+                moreActive && "font-bold text-primary dark:text-gold-400",
+              )}
+            >
+              <span className={cn("flex h-6 w-11 items-center justify-center rounded-full", moreActive && "bg-secondary")}>
+                <Menu className="size-[19px]" aria-hidden="true" />
+              </span>
+              Ko‘proq
+            </button>
+          </li>
+        </ul>
+      </nav>
+      <MoreSheet open={open} onOpenChange={setOpen} />
+    </>
+  )
+}
+
+function ArchiveBanner() {
+  const { isArchive, season, current, setSeasonId } = useSeason()
+  if (!isArchive || !season || !current) return null
+  return (
+    <div className="border-b border-gold/30 bg-gold-soft">
+      <div className="container-page flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-sm">
+        <Archive className="size-4 text-gold-text" aria-hidden="true" />
+        <span>
+          Siz <strong>{season.year}-yil</strong> mavsumi arxivini ko‘ryapsiz.
+        </span>
+        <button
+          type="button"
+          onClick={() => setSeasonId(current.id)}
+          className="min-h-8 rounded-sm font-semibold text-gold-text underline underline-offset-4"
+        >
+          Joriy mavsumga qaytish
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function Footer() {
+  const { data: sponsors = [] } = useSponsors()
+  return (
+    <footer className="mt-12 border-t border-border bg-card pb-20 lg:pb-0">
+      {sponsors.length > 0 && (
+        <div className="border-b border-border">
+          <div className="container-page py-5">
+            <p className="mb-3 text-xs text-muted-foreground">Liga homiylari</p>
+            <ul className="flex flex-wrap items-center gap-x-6 gap-y-2">
+              {sponsors.map((s) => (
+                <li key={s.id}>
+                  <Link
+                    to="/homiylar"
+                    className={cn(
+                      "font-display text-muted-foreground transition-colors hover:text-foreground",
+                      s.tier === "GENERAL" ? "text-lg text-foreground" : "text-md",
+                    )}
+                  >
+                    {s.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+      <div className="container-page flex flex-col gap-4 py-6 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
+        <div className="flex items-start gap-3">
+          <LeagueMark className="size-10" />
+          <div>
+          <p className="font-semibold text-foreground">Payariq Oltin Ligasi</p>
+          <p>Payariq tumani qishloqlari havaskorlar futbol musobaqasi</p>
+          {IS_DEMO_MODE && <p className="mt-1 text-xs">Sayt hozir namunaviy ma’lumotlar bilan ishlamoqda.</p>}
+          </div>
+        </div>
+        <nav aria-label="Pastki havolalar">
+          <ul className="flex flex-wrap gap-x-4 gap-y-2">
+            <li><Link className="hover:text-foreground" to="/nizom">Musobaqa nizomi</Link></li>
+            <li><Link className="hover:text-foreground" to="/liga-haqida">Liga haqida</Link></li>
+            <li><Link className="hover:text-foreground" to="/homiylar">Homiy bo‘lish</Link></li>
+            <li><Link className="hover:text-foreground" to="/mavsumlar">Arxiv</Link></li>
+            <li><Link className="hover:text-foreground" to="/admin">Tashkilotchilar uchun</Link></li>
+          </ul>
+        </nav>
+      </div>
+    </footer>
+  )
+}
+
+/** Liga hali birorta mavsum ochmagan bo'lsa (yangi o'rnatilgan sayt) */
+function NoSeasonYet() {
+  return (
+    <div className="container-page py-10">
+      <EmptyState
+        icon={Trophy}
+        title="Birinchi mavsum tez orada boshlanadi"
+        description="Tashkilotchilar mavsumni ochgach, o‘yinlar taqvimi, turnir jadvali va natijalar shu yerda paydo bo‘ladi."
+      />
+    </div>
+  )
+}
+
+export function PublicLayout() {
+  useLiveUpdates({ toasts: true })
+  const { seasons, isLoading } = useSeason()
+  const location = useLocation()
+  const seasonPages = !["/yangiliklar", "/homiylar", "/liga-haqida"].some((p) => location.pathname.startsWith(p))
+  const noSeasons = !isLoading && seasons.length === 0 && seasonPages
+  return (
+    <div className="flex min-h-dvh flex-col">
+      <ScrollToTop />
+      <a
+        href="#main"
+        className="sr-only z-50 rounded-md bg-card px-4 py-2 font-semibold focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
+      >
+        Asosiy mazmunga o‘tish
+      </a>
+      <header className="sticky top-0 z-40 bg-band text-band-foreground shadow-[0_1px_0_var(--band-line)]">
+        <div className="container-page flex h-14 items-center gap-3 md:h-16">
+          <Logo />
+          <div className="ml-auto flex items-center gap-1.5 lg:ml-6 lg:flex-1 lg:justify-between">
+            <DesktopNav />
+            <div className="flex items-center gap-1.5">
+              <SeasonSelect />
+              <ThemeToggle />
+            </div>
+          </div>
+        </div>
+      </header>
+      <ArchiveBanner />
+      <main id="main" className="flex-1 pb-6 md:pb-10">
+        {noSeasons ? <NoSeasonYet /> : <Outlet />}
+      </main>
+      <Footer />
+      <BottomNav />
+    </div>
+  )
+}

@@ -1,0 +1,7 @@
+# Barcha matnli fayllar LF bilan saqlanadi (server Linux, skriptlar va Caddyfile buzilmasin)
+* text=auto eol=lf
+*.png binary
+*.webp binary
+*.jpg binary
+*.ico binary
+*.woff2 binary

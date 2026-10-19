@@ -1,0 +1,333 @@
+import { expect, test } from "@playwright/test"
+import { collectErrors, loginAsAdmin, noHorizontalScroll, TINY_PNG } from "./helpers"
+
+const PUBLIC_PAGES = ["/", "/oyinlar", "/jadval", "/pley-off", "/jamoalar", "/futbolchilar", "/statistika", "/yangiliklar", "/mavsumlar", "/chempionlar", "/homiylar", "/liga-haqida", "/nizom"]
+
+test.describe("Ommaviy sayt", () => {
+  test("bosh sahifa loginsiz ochiladi va asosiy bloklar ko‘rinadi", async ({ page }) => {
+    const errors = collectErrors(page)
+    await page.goto("/")
+    await expect(page.getByRole("heading", { name: "Eng yaqin o‘yinlar" })).toBeVisible()
+    await expect(page.getByRole("heading", { name: "Oxirgi natijalar" })).toBeVisible()
+    await expect(page.getByRole("heading", { name: "Guruhlar jadvali" })).toBeVisible()
+    await expect(page.getByRole("heading", { name: "To‘purarlar" })).toBeVisible()
+    await expect(page.getByText("Jonli").first()).toBeVisible()
+    expect(errors).toEqual([])
+  })
+
+  for (const width of [375, 768, 1440]) {
+    test(`${width}px kenglikda sahifalar gorizontal surilmaydi va xatosiz ochiladi`, async ({ page }) => {
+      const errors = collectErrors(page)
+      await page.setViewportSize({ width, height: 900 })
+      for (const path of PUBLIC_PAGES) {
+        await page.goto(path)
+        await expect(page.locator("main h1").first()).toBeAttached()
+        await page.waitForLoadState("networkidle")
+        await noHorizontalScroll(page)
+      }
+      expect(errors).toEqual([])
+    })
+  }
+
+  test("arxiv mavsumini tanlash mumkin va chempion ko‘rinadi", async ({ page }) => {
+    await page.goto("/mavsumlar")
+    await page.getByRole("button", { name: "2025-yil mavsumini ochish" }).click()
+    await expect(page.getByText("Siz 2025-yil mavsumi arxivini ko‘ryapsiz.")).toBeVisible()
+    await expect(page.getByText("2025-yil chempioni")).toBeVisible()
+    await page.goto("/pley-off")
+    await expect(page.getByText("Final", { exact: true }).first()).toBeVisible()
+  })
+
+  test("«Mening jamoam»: jamoa tanlanadi va bosh sahifada uning holati ko‘rinadi", async ({ page }) => {
+    const errors = collectErrors(page)
+    await page.goto("/jamoalar")
+    await page.locator('main a[href^="/jamoalar/"]').first().click()
+    const toggle = page.getByRole("button", { name: "Mening jamoam qilish" })
+    await expect(toggle).toBeVisible()
+    const name = await page.locator("main h1").first().innerText()
+    await toggle.click()
+    await expect(page.getByRole("button", { name: "Mening jamoam", exact: true })).toHaveAttribute("aria-pressed", "true")
+    await page.goto("/")
+    const panel = page.getByRole("region", { name: "Mening jamoam" })
+    await expect(panel.getByRole("link", { name })).toBeVisible()
+    await expect(panel.getByText("Jadvalda")).toBeVisible()
+    await expect(panel.getByText(/-o‘rin, [A-Z] guruhi/)).toBeVisible()
+    // Jadvalda o'z jamoasi ajratib ko'rsatiladi
+    await page.goto("/jadval")
+    await expect(page.locator("tr.bg-gold-soft", { hasText: name })).toHaveCount(1)
+    expect(errors).toEqual([])
+  })
+
+  test("o‘yin sahifasida Telegram uchun natija rasmi tayyorlanadi", async ({ page }) => {
+    const errors = collectErrors(page)
+    await page.goto("/oyinlar?tab=natijalar")
+    await page.locator('main a[href^="/oyinlar/"]').first().click()
+    await page.getByRole("button", { name: "Natija rasmi" }).click()
+    const dialog = page.getByRole("dialog")
+    const img = dialog.getByRole("img")
+    await expect(img).toBeVisible({ timeout: 15_000 })
+    expect(await img.evaluate((el: HTMLImageElement) => [el.naturalWidth, el.naturalHeight])).toEqual([1080, 1350])
+    await expect(dialog.getByRole("button", { name: "Yuklab olish" })).toBeEnabled()
+    await dialog.getByText("Post matni").click()
+    await expect(dialog.locator("pre")).toContainText("Payariq Oltin Ligasi")
+    expect(errors).toEqual([])
+  })
+
+  test("admin «O‘yinlar» bo‘limidan anons rasmi yuklab olinadi, rasmda localhost yo‘q", async ({ page }) => {
+    const errors = collectErrors(page)
+    await loginAsAdmin(page)
+    await page.goto("/admin/oyinlar")
+    await page.getByRole("combobox", { name: "Holat" }).click()
+    await page.getByRole("option", { name: "Rejalashtirilgan" }).click()
+    await page.getByRole("button", { name: /^Anons rasmi:/ }).first().click()
+    const dialog = page.getByRole("dialog")
+    await expect(dialog.getByRole("heading", { name: "Anons rasmi" })).toBeVisible()
+    await expect(dialog.getByRole("img")).toBeVisible({ timeout: 15_000 })
+    await dialog.getByText("Post matni").click()
+    await expect(dialog.locator("pre")).not.toContainText("localhost")
+    const download = page.waitForEvent("download")
+    await dialog.getByRole("button", { name: "Yuklab olish" }).click()
+    expect((await download).suggestedFilename()).toMatch(/^payariq-anons-.+\.png$/)
+    expect(errors).toEqual([])
+  })
+
+  test("nizom sahifasi pley-offga kim chiqishini tushuntiradi", async ({ page }) => {
+    await page.goto("/jadval")
+    await page.getByRole("link", { name: /Musobaqa nizomi/ }).first().click()
+    await expect(page).toHaveURL(/\/nizom/)
+    await expect(page.getByText("4 jamoali guruhdan —")).toBeVisible()
+    await expect(page.getByText("5 jamoali guruhdan —")).toBeVisible()
+    await expect(page.getByRole("heading", { name: "Kartochkalar va diskvalifikatsiya" })).toBeVisible()
+  })
+
+  test("o‘yin sahifasi voqealar va o‘zaro o‘yinlarni ko‘rsatadi", async ({ page }) => {
+    await page.goto("/oyinlar?tab=natijalar")
+    await page.locator('a[href^="/oyinlar/"]').first().click()
+    await expect(page.getByRole("heading", { name: "O‘yin voqealari" })).toBeVisible()
+    await expect(page.getByRole("heading", { name: "O‘zaro o‘yinlar" })).toBeVisible()
+  })
+})
+
+test.describe("Jonli yangilanish", () => {
+  test("admin gol kiritganda muxlis sahifasi qayta yuklanmasdan yangilanadi va «GOL!» xabari chiqadi", async ({ page, context }) => {
+    const seasons = await (await page.request.get("/api/public/seasons")).json()
+    const active = seasons.find((s: { status: string }) => s.status === "ACTIVE")
+    const bundle = await (await page.request.get(`/api/public/seasons/${active.id}/bundle`)).json()
+    const live = bundle.matches.find((m: { status: string }) => m.status === "LIVE")
+    const homeName = bundle.teams.find((t: { id: string }) => t.id === live.homeId).name
+    const next = `${live.homeScore + (live.homeExtra ?? 0) + 1} : ${live.awayScore + (live.awayExtra ?? 0)}`
+
+    // Muxlis o'yin sahifasini ochib turibdi
+    await page.goto(`/oyinlar/${live.id}`)
+    await expect(page.getByRole("heading", { name: "O‘yin voqealari" })).toBeVisible()
+
+    // Admin boshqa oynada gol kiritadi
+    const admin = await context.newPage()
+    await loginAsAdmin(admin)
+    await admin.goto(`/admin/natijalar/${live.id}`)
+    await admin.getByRole("button", { name: `${homeName}: gol qo‘shish` }).click()
+    await admin.getByRole("dialog").getByRole("listitem").first().getByRole("button").click()
+    await admin.getByRole("button", { name: "Natijani saqlash" }).click()
+    await expect(admin.getByText("O‘yin holati saqlandi")).toBeVisible()
+
+    // Muxlis sahifasi o'zi yangilandi: xabar, «GOL!» belgisi va yangi hisob
+    await expect(page.getByText(new RegExp(`^GOL! ${homeName}`))).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText(next).first()).toBeVisible()
+    await expect(page.getByRole("status").filter({ hasText: /^GOL!$/ })).toBeVisible()
+  })
+})
+
+test.describe("Admin paneli", () => {
+  test("loginsiz admin paneliga kirib bo‘lmaydi", async ({ page }) => {
+    await page.goto("/admin/jamoalar")
+    await expect(page).toHaveURL(/\/admin\/kirish/)
+  })
+
+  test("natija kiritilganda turnir jadvali avtomatik yangilanadi", async ({ page }) => {
+    const errors = collectErrors(page)
+    await loginAsAdmin(page)
+    await page.goto("/admin/natijalar")
+    const item = page.locator('[data-testid="admin-match"][data-status="SCHEDULED"]').first()
+    const homeName = (await item.getAttribute("data-home-name"))!
+    expect(homeName).toBeTruthy()
+
+    await page.goto("/jadval")
+    const teamRow = () => page.locator("tr", { has: page.getByRole("link", { name: homeName, exact: true }) })
+    const row = teamRow()
+    const before = Number(await row.locator('[data-col="points"]').innerText())
+    const playedBefore = Number(await row.locator("td").nth(2).innerText())
+
+    await page.goto("/admin/natijalar")
+    await page.locator('[data-testid="admin-match"][data-status="SCHEDULED"]').first().getByRole("link", { name: "Natija kiritish" }).click()
+    await expect(page.getByRole("heading", { name: "Natija kiritish" })).toBeVisible()
+
+    // Uy jamoasi 2:0 hisobida yutadi; gollar ro'yxati avtomatik ikki qatorga ko'payadi
+    await page.getByRole("button", { name: `${homeName} gollari: oshirish` }).click()
+    await page.getByRole("button", { name: `${homeName} gollari: oshirish` }).click()
+    await expect(page.getByText("2-gol")).toBeVisible()
+    await page.getByRole("combobox", { name: "Gol muallifi" }).first().click()
+    await page.getByRole("option").nth(1).click()
+    await expect(page.getByText("Ma’lumotlar mos. Saqlashga tayyor.")).toBeVisible()
+    await page.getByRole("button", { name: "Natijani saqlash" }).click()
+    await expect(page.getByText("Natija saqlandi. Jadval va statistika yangilandi.")).toBeVisible()
+
+    await page.goto("/jadval")
+    const after = Number(await teamRow().locator('[data-col="points"]').innerText())
+    const playedAfter = Number(await teamRow().locator("td").nth(2).innerText())
+    expect(after).toBe(before + 3)
+    expect(playedAfter).toBe(playedBefore + 1)
+
+    // Natijani tahrirlash: durangga o'zgartirilsa, ochko qayta hisoblanadi (ikki marta qo'shilmaydi)
+    await page.goto("/admin/natijalar")
+    await page.getByRole("tab", { name: "Yakunlangan" }).click()
+    await page.locator(`[data-testid="admin-match"][data-home-name="${homeName}"]`).first().getByRole("link", { name: "Tahrirlash" }).click()
+    const awayPlus = page.getByRole("button", { name: /gollari: oshirish/ }).nth(1)
+    await awayPlus.click()
+    await awayPlus.click()
+    await page.getByRole("button", { name: "Natijani saqlash" }).click()
+    await expect(page.getByText("Natija saqlandi. Jadval va statistika yangilandi.")).toBeVisible()
+    await page.goto("/jadval")
+    const afterEdit = Number(await teamRow().locator('[data-col="points"]').innerText())
+    expect(afterEdit).toBe(before + 1)
+    expect(errors).toEqual([])
+  })
+
+  test("gol muallifi bir bosishda belgilanadi: hisob oshadi va gol o‘yinchi nomiga yoziladi", async ({ page }) => {
+    const errors = collectErrors(page)
+    await loginAsAdmin(page)
+    await page.goto("/admin/natijalar")
+    const item = page.locator('[data-testid="admin-match"][data-status="SCHEDULED"]').first()
+    const homeName = (await item.getAttribute("data-home-name"))!
+    await item.getByRole("link", { name: "Natija kiritish" }).click()
+    await page.getByRole("button", { name: `${homeName}: gol qo‘shish` }).click()
+    const dialog = page.getByRole("dialog")
+    const player = dialog.getByRole("listitem").first().getByRole("button")
+    const playerName = (await player.locator("span.truncate").innerText()).trim()
+    await player.click()
+    await expect(dialog).toBeHidden()
+    await expect(page.locator(`output[aria-label="${homeName} gollari"]`)).toHaveText("1")
+    await expect(page.getByRole("combobox", { name: "Gol muallifi" }).first()).toContainText(playerName)
+    await page.getByRole("button", { name: "Natijani saqlash" }).click()
+    await expect(page.getByText("Natija saqlandi. Jadval va statistika yangilandi.")).toBeVisible()
+    await expect(page.getByText("Natija saqlandi:")).toBeVisible()
+    await page.goto("/statistika")
+    await expect(page.getByRole("link", { name: playerName }).first()).toBeVisible()
+    expect(errors).toEqual([])
+  })
+
+  test("bayonnoma chop etishga tayyor: tarkiblar va bo‘sh kataklar", async ({ page }) => {
+    await loginAsAdmin(page)
+    await page.goto("/admin/natijalar")
+    await page.getByRole("link", { name: "Bayonnoma" }).first().click()
+    await expect(page.getByRole("heading", { name: "O‘yin bayonnomasi" })).toBeVisible()
+    await expect(page.getByRole("button", { name: "Chop etish" })).toBeVisible()
+    await expect(page.getByRole("columnheader", { name: "Futbolchi" }).first()).toBeVisible()
+  })
+
+  test("boshqaruv panelida mavsum yo‘l xaritasi keyingi qadamni ko‘rsatadi", async ({ page }) => {
+    await loginAsAdmin(page)
+    const map = page.getByRole("region", { name: "Mavsum bosqichlari" })
+    await expect(map).toBeVisible()
+    await expect(map.getByText(/^\d+ \/ \d+ bajarildi$/)).toBeVisible()
+    await map.getByText("Barcha bosqichlar").click()
+    await expect(map.getByText("Qur’a: guruhlarni tuzish")).toBeVisible()
+  })
+
+  test("noto‘g‘ri ma’lumot bilan natija saqlanmaydi va sababi tushuntiriladi", async ({ page }) => {
+    await loginAsAdmin(page)
+    await page.goto("/admin/natijalar")
+    await page.locator('[data-testid="admin-match"][data-status="SCHEDULED"]').first().getByRole("link", { name: "Natija kiritish" }).click()
+    // Futbolchi tanlanmagan kartochka — xato
+    await page.getByRole("region", { name: "Kartochkalar" }).getByRole("button").first().click()
+    await page.getByRole("button", { name: "Natijani saqlash" }).click()
+    await expect(page.getByText("Saqlashdan oldin tuzating")).toBeVisible()
+    await expect(page.getByText("Kartochka uchun futbolchini tanlang.")).toBeVisible()
+    await expect(page).toHaveURL(/\/admin\/natijalar\/.+/)
+  })
+
+  test("yangi jamoa logotip bilan qo‘shiladi va ro‘yxatda paydo bo‘ladi", async ({ page }) => {
+    const name = `Sinov ${Date.now().toString(36)}`
+    await loginAsAdmin(page)
+    await page.goto("/admin/jamoalar")
+    await page.getByRole("button", { name: "Jamoa qo‘shish" }).click()
+    await page.getByRole("button", { name: "Jamoani qo‘shish" }).click()
+    await expect(page.getByText("Jamoa nomini kiriting (kamida 2 ta harf)")).toBeVisible()
+    await page.getByLabel("Jamoa nomi").fill(name)
+    await page.getByLabel("Qisqa nomi").fill("SIN")
+    await page.getByRole("textbox", { name: "Qishloq" }).fill("Sinov")
+    await page.locator("input[type=file]").setInputFiles({ name: "logo.png", mimeType: "image/png", buffer: TINY_PNG })
+    await expect(page.getByRole("button", { name: "Boshqa rasm" })).toBeVisible()
+    await page.getByRole("button", { name: "Jamoani qo‘shish" }).click()
+    await expect(page.getByText(`«${name}» jamoasi qo‘shildi`)).toBeVisible()
+    const row = page.locator("#admin-main li", { hasText: name })
+    await expect(row).toBeVisible()
+    await expect(row.locator("img")).toHaveAttribute("src", /^\/media\/[0-9a-f-]+\.(webp|png)$/)
+  })
+
+  test("maydon qo‘shiladi va o‘yin belgilashda tanlash mumkin", async ({ page }) => {
+    await loginAsAdmin(page)
+    await page.goto("/admin/sozlamalar?tab=maydonlar")
+    await page.getByRole("textbox", { name: "Maydon nomi" }).fill("Yangi sinov maydoni")
+    await page.getByRole("textbox", { name: "Qishloq" }).fill("Payariq")
+    await page.getByRole("button", { name: "Qo‘shish" }).click()
+    await expect(page.getByText("Maydon qo‘shildi")).toBeVisible()
+    await expect(page.locator("#admin-main").getByText("Yangi sinov maydoni")).toBeVisible()
+    await page.goto("/admin/oyinlar")
+    await page.getByRole("button", { name: "O‘yin qo‘shish" }).click()
+    await page.getByLabel("Maydon").click()
+    await expect(page.getByRole("option", { name: "Yangi sinov maydoni" })).toBeVisible()
+  })
+
+  test("telefonda admin paneli pastki menyu bilan ishlaydi", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 })
+    await loginAsAdmin(page)
+    await noHorizontalScroll(page)
+    await page.getByRole("navigation", { name: "Pastki menyu" }).getByRole("link", { name: "Natijalar" }).click()
+    await expect(page.getByRole("heading", { name: "Natijalar" })).toBeVisible()
+    await noHorizontalScroll(page)
+  })
+})
+
+test.describe("Foydalanuvchilar va rollar", () => {
+  test("bosh tashkilotchi yordamchi qo‘shadi, yordamchi faqat o‘z bo‘limlarini ko‘radi va parolini almashtiradi", async ({ page }) => {
+    const errors = collectErrors(page)
+    await loginAsAdmin(page)
+    await page.goto("/admin/sozlamalar?tab=foydalanuvchilar")
+    await page.getByRole("button", { name: "Yordamchi qo‘shish" }).click()
+    const dialog = page.getByRole("dialog")
+    await dialog.getByLabel("Ism-familiyasi").fill("Akmal Karimov")
+    await dialog.getByLabel("Login").fill("akmal")
+    await dialog.getByRole("button", { name: "Yaratish" }).click()
+    const password = await dialog.locator("#u-password").inputValue()
+    expect(password).toMatch(/^[\w]{4}-[\w]{4}-[\w]{4}$/)
+    await dialog.getByRole("button", { name: "Yordamchini qo‘shish" }).click()
+    await expect(dialog.getByRole("heading", { name: "Akkaunt tayyor" })).toBeVisible()
+    await expect(dialog.getByText(password)).toBeVisible()
+    await dialog.getByRole("button", { name: "Tayyor" }).click()
+    await expect(page.getByText("Akmal Karimov", { exact: true })).toBeVisible()
+    await expect(page.getByText("Natija kirituvchi, login:")).toBeVisible()
+
+    // Yordamchi bilan kirish: menyuda faqat o'z bo'limlari
+    await page.getByRole("button", { name: "Chiqish" }).click()
+    await page.getByLabel("Login").fill("akmal")
+    await page.getByLabel("Parol", { exact: true }).fill(password)
+    await page.getByRole("button", { name: "Kirish" }).click()
+    await expect(page).toHaveURL(/\/admin$/)
+    const nav = page.getByRole("navigation", { name: "Boshqaruv menyusi" })
+    await expect(nav.getByRole("link", { name: "Natijalar" })).toBeVisible()
+    await expect(nav.getByRole("link", { name: "Jamoalar" })).toHaveCount(0)
+    await expect(nav.getByRole("link", { name: "Sozlamalar" })).toHaveCount(0)
+    await page.goto("/admin/jamoalar")
+    await expect(page.getByText("Bu bo‘lim sizning rolingiz uchun yopiq")).toBeVisible()
+
+    // O'z parolini almashtirish
+    await page.goto("/admin/hisobim")
+    await expect(page.getByText("Natija kirituvchi", { exact: true })).toBeVisible()
+    await page.locator("#pw-current").fill(password)
+    await page.locator("#pw-new").fill("Yangi-Parol-2026")
+    await page.locator("#pw-repeat").fill("Yangi-Parol-2026")
+    await page.getByRole("button", { name: "Parolni almashtirish" }).click()
+    await expect(page.getByText("Parol almashtirildi")).toBeVisible()
+    expect(errors).toEqual([])
+  })
+})

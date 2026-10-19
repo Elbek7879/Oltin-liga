@@ -1,0 +1,21 @@
+# /etc/caddy/Caddyfile — Caddy HTTPS sertifikatini (Let's Encrypt) o'zi oladi va yangilaydi.
+# sizning-domen.uz o'rniga haqiqiy domenni yozing; domen DNS'i server IP manziliga yo'naltirilgan bo'lishi kerak.
+sizning-domen.uz, www.sizning-domen.uz {
+	# Yuklanadigan rasm hajmi chegarasi (ilova 3 MB gacha qabul qiladi)
+	request_body {
+		max_size 4MB
+	}
+
+	# Jonli yangilanishlar oqimi (gollar saytda darhol ko'rinishi uchun): siqilmaydi, kutmasdan uzatiladi
+	@live path /api/public/live
+	handle @live {
+		reverse_proxy 127.0.0.1:8080 {
+			flush_interval -1
+		}
+	}
+
+	handle {
+		encode zstd gzip
+		reverse_proxy 127.0.0.1:8080
+	}
+}

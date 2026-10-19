@@ -1,0 +1,376 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "./shadcn-base.css";
+@import "@fontsource-variable/archivo/standard.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Oltin Maydon dizayn tizimi.
+ * Barcha rang, shrift, o'lcham va harakat qiymatlari shu yerda belgilanadi.
+ */
+
+@theme {
+  --font-sans: "Archivo Variable", "Archivo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  /* Ixcham tipografika shkalasi: telefonda matn katta bo'lib ketmaydi */
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 0.875rem;
+  --text-base--line-height: 1.375rem;
+  --text-md: 0.9375rem;
+  --text-md--line-height: 1.5rem;
+  --text-lg: 1rem;
+  --text-lg--line-height: 1.5rem;
+  --text-xl: 1.125rem;
+  --text-xl--line-height: 1.625rem;
+  --text-2xl: 1.25rem;
+  --text-2xl--line-height: 1.75rem;
+  --text-3xl: 1.5rem;
+  --text-3xl--line-height: 1.875rem;
+  --text-4xl: 1.875rem;
+  --text-4xl--line-height: 2.25rem;
+  --text-5xl: 2.5rem;
+  --text-5xl--line-height: 1;
+
+  /* Brend ranglari */
+  --color-pitch-950: #082419;
+  --color-pitch-900: #0b2e22;
+  --color-pitch-800: #0f3d2e;
+  --color-pitch-700: #155040;
+  --color-pitch-600: #1e6a51;
+  --color-pitch-500: #2e7d57;
+  --color-pitch-300: #8fb3a0;
+  --color-pitch-200: #bfd3c6;
+  --color-pitch-100: #dce8df;
+  --color-pitch-50: #eef4f0;
+
+  --color-gold-700: #8a6d12;
+  --color-gold-600: #a8861b;
+  --color-gold-500: #c9a227;
+  --color-gold-400: #e2bf4f;
+  --color-gold-300: #edd27f;
+  --color-gold-100: #fbf3d9;
+  --color-gold-50: #fdf9ec;
+
+  --color-chalk: #f4f6f1;
+
+  --ease-out-quick: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Ma'noli ranglar */
+  --color-band: var(--band);
+  --color-band-foreground: var(--band-foreground);
+  --color-band-muted: var(--band-muted);
+  --color-band-line: var(--band-line);
+  --color-gold: var(--gold);
+  --color-gold-text: var(--gold-text);
+  --color-gold-soft: var(--gold-soft);
+  --color-live: var(--live);
+  --color-win: var(--win);
+  --color-draw: var(--draw);
+  --color-loss: var(--loss);
+  --color-qualify: var(--qualify);
+  --color-qualify-soft: var(--qualify-soft);
+  --color-row-hover: var(--row-hover);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+}
+
+:root {
+  --radius: 0.625rem;
+
+  --background: #f4f6f1;
+  --foreground: #16201b;
+  --card: #ffffff;
+  --card-foreground: #16201b;
+  --popover: #ffffff;
+  --popover-foreground: #16201b;
+  --primary: #0f3d2e;
+  --primary-foreground: #f4f6f1;
+  --secondary: #e6eee8;
+  --secondary-foreground: #0f3d2e;
+  --muted: #ebf0ec;
+  --muted-foreground: #56645c;
+  --accent: #e6eee8;
+  --accent-foreground: #0f3d2e;
+  --destructive: #c2412d;
+  --border: #dce3dd;
+  --input: #c9d4cc;
+  --ring: #1e6a51;
+
+  --band: #0f3d2e;
+  --band-foreground: #f4f6f1;
+  --band-muted: #bfd3c6;
+  --band-line: rgb(244 246 241 / 0.22);
+  --gold: #c9a227;
+  --gold-text: #7d6310;
+  --gold-soft: #fbf3d9;
+  --live: #bb3226;
+  --win: #287050;
+  --draw: #7a867f;
+  --loss: #c2412d;
+  --qualify: #287050;
+  --qualify-soft: #eaf3ed;
+  --row-hover: #f3f7f4;
+}
+
+.dark {
+  --background: #0a1d16;
+  --foreground: #e6eee9;
+  --card: #10271e;
+  --card-foreground: #e6eee9;
+  --popover: #132c22;
+  --popover-foreground: #e6eee9;
+  --primary: #e2bf4f;
+  --primary-foreground: #0a1d16;
+  --secondary: #173428;
+  --secondary-foreground: #e6eee9;
+  --muted: #142e23;
+  --muted-foreground: #9bb0a4;
+  --accent: #1a3a2d;
+  --accent-foreground: #e6eee9;
+  --destructive: #f06b57;
+  --border: #21402f;
+  --input: #2d4c3e;
+  --ring: #e2bf4f;
+
+  --band: #0b2e22;
+  --band-foreground: #eef4f0;
+  --band-muted: #9bb0a4;
+  --band-line: rgb(238 244 240 / 0.16);
+  --gold: #e2bf4f;
+  --gold-text: #e2bf4f;
+  --gold-soft: #2f2a12;
+  --live: #ff6b5e;
+  --win: #4fb582;
+  --draw: #93a29a;
+  --loss: #f07a66;
+  --qualify: #4fb582;
+  --qualify-soft: #12301f;
+  --row-hover: #143126;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    scroll-padding-top: 4.5rem;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-size: var(--text-base);
+    line-height: var(--text-base--line-height);
+    font-variant-numeric: tabular-nums;
+    min-height: 100dvh;
+  }
+
+  @media (min-width: 768px) {
+    body {
+      font-size: var(--text-md);
+      line-height: var(--text-md--line-height);
+    }
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    text-wrap: balance;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  a[href] {
+    cursor: pointer;
+  }
+}
+
+/* Sarlavhalar uchun tor (condensed) shrift */
+@utility font-display {
+  font-stretch: 75%;
+  font-weight: 750;
+  letter-spacing: 0.002em;
+}
+
+/* Hisob va vaqt raqamlari */
+@utility font-score {
+  font-stretch: 68%;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+
+@utility page-title {
+  font-stretch: 75%;
+  font-weight: 750;
+  font-size: var(--text-2xl);
+  line-height: var(--text-2xl--line-height);
+
+  @media (min-width: 768px) {
+    font-size: var(--text-4xl);
+    line-height: var(--text-4xl--line-height);
+  }
+}
+
+@utility section-title {
+  font-stretch: 75%;
+  font-weight: 750;
+  font-size: var(--text-lg);
+  line-height: var(--text-lg--line-height);
+
+  @media (min-width: 768px) {
+    font-size: var(--text-2xl);
+    line-height: var(--text-2xl--line-height);
+  }
+}
+
+@utility container-page {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 1320px;
+  padding-inline: 1rem;
+
+  @media (min-width: 768px) {
+    padding-inline: 1.5rem;
+  }
+
+  @media (min-width: 1024px) {
+    padding-inline: 2rem;
+  }
+}
+
+@utility panel {
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
+  background-color: var(--card);
+  color: var(--card-foreground);
+}
+
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Jonli o'yinda gol: hisob qisqa yorishadi, «GOL!» belgisi paydo bo'ladi */
+@keyframes goal-flash {
+  0% { transform: scale(1); color: var(--color-gold-300); }
+  20% { transform: scale(1.12); color: var(--color-gold-300); }
+  100% { transform: scale(1); }
+}
+
+@keyframes goal-badge {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.goal-flash {
+  animation: goal-flash 1.2s ease-out 2;
+}
+
+.goal-badge {
+  animation: goal-badge 0.25s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .goal-flash,
+  .goal-badge {
+    animation: none;
+  }
+
+  .goal-flash {
+    color: var(--color-gold-300);
+  }
+}
+
+/* Bayonnoma jadvallari: qo'lda yozish uchun katakli */
+.sheet-table th,
+.sheet-table td {
+  border: 1px solid color-mix(in oklab, currentColor 35%, transparent);
+  padding: 0.125rem 0.375rem;
+  height: 1.5rem;
+}
+
+.sheet-table th {
+  background: var(--muted);
+  font-weight: 650;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: #fff;
+    color: #000;
+  }
+
+  #admin-main {
+    padding: 0 !important;
+  }
+
+  .sheet-table th {
+    background: #eee;
+  }
+
+  .sheet-table th,
+  .sheet-table td {
+    height: 1.3rem;
+    border-color: #777;
+  }
+}

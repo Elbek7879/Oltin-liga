@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useSeasonData } from "@/hooks/use-season-data"
 import { sideName, stageLabel, totalScore } from "@/lib/match"
+import { searchKey } from "@/lib/translit"
 
 export default function ResultsPage() {
   const { index, isLoading, error, refetch } = useSeasonData()
@@ -26,8 +27,8 @@ export default function ResultsPage() {
 
   const lists = useMemo(() => {
     if (!index) return { pending: [], finished: [], other: [] }
-    const q = query.trim().toLowerCase()
-    const match = (id: string | null) => !q || (index.team(id)?.name.toLowerCase().includes(q) ?? false)
+    const q = searchKey(query)
+    const match = (id: string | null) => !q || (searchKey(index.team(id)?.name ?? "").includes(q) && Boolean(index.team(id)))
     const all = index.bundle.matches.filter((m) => m.homeId && m.awayId && (match(m.homeId) || match(m.awayId)))
     const now = Date.now()
     return {

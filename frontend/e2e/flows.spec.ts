@@ -1,7 +1,55 @@
+import path from "node:path"
 import { expect, test } from "@playwright/test"
-import { collectErrors, loginAsAdmin, noHorizontalScroll, TINY_PNG } from "./helpers"
+import { collectErrors, loginAsAdmin, noHorizontalScroll, openNewDraftSeason, TINY_PNG } from "./helpers"
 
-const PUBLIC_PAGES = ["/", "/oyinlar", "/jadval", "/pley-off", "/jamoalar", "/futbolchilar", "/statistika", "/yangiliklar", "/mavsumlar", "/chempionlar", "/homiylar", "/liga-haqida", "/nizom"]
+const PUBLIC_PAGES = ["/", "/oyinlar", "/jadval", "/pley-off", "/jamoalar", "/futbolchilar", "/statistika", "/ramziy-jamoa", "/yangiliklar", "/mavsumlar", "/chempionlar", "/homiylar", "/liga-haqida", "/nizom"]
+
+const KIRILL_OUT = path.resolve(import.meta.dirname, "../../docs/screenshots/10-kirill")
+const CYRILLIC = /[\u0400-\u04FF]/
+
+test.describe("Lotin ↔ kirill yozuvi", () => {
+  test("butun sayt kirillchaga o‘tadi, tanlov saqlanadi, qidiruv kirillcha so‘rov bilan ishlaydi va lotinchaga qaytadi", async ({ page }) => {
+    const errors = collectErrors(page)
+    await page.goto("/")
+    await page.getByRole("button", { name: "Кирилл ёзувига ўтиш" }).click()
+    await expect(page.locator("html")).toHaveAttribute("lang", "uz-Cyrl")
+    await expect(page.getByRole("link", { name: "Ўйинлар" }).first()).toBeVisible()
+    await page.screenshot({ path: path.join(KIRILL_OUT, "bosh-sahifa-kompyuter.png") })
+
+    // Sahifa almashganda React chizgan yangi matn ham darhol kirillcha
+    await page.getByRole("link", { name: "Жадвал" }).first().click()
+    await expect(page).toHaveURL(/\/jadval/)
+    await expect(page.locator("main h1").first()).toHaveText(CYRILLIC)
+    await expect(page.locator("main")).not.toContainText("guruhi")
+
+    // Qayta yuklanganda tanlov saqlanadi
+    await page.reload()
+    await expect(page.locator("main h1").first()).toHaveText(CYRILLIC)
+
+    // Qidiruv: kirillcha so'rov lotincha saqlangan nomni topadi
+    await page.goto("/jamoalar")
+    const cards = page.locator('main a[href^="/jamoalar/"]')
+    await expect(cards.nth(1)).toBeVisible()
+    const before = await cards.count()
+    await page.getByRole("searchbox").fill("Лочин")
+    await expect(cards).toHaveCount(1)
+    expect(before).toBeGreaterThan(1)
+    await expect(cards.first()).toContainText("Лочин")
+
+    // Telefonda ham sig'adi
+    await page.setViewportSize({ width: 375, height: 812 })
+    await page.goto("/")
+    await noHorizontalScroll(page)
+    await page.screenshot({ path: path.join(KIRILL_OUT, "bosh-sahifa-telefon.png") })
+
+    // Lotinchaga qaytish — sahifani qayta yuklamasdan
+    await page.getByRole("button", { name: "Lotin yozuviga o‘tish" }).click()
+    await expect(page.locator("html")).toHaveAttribute("lang", "uz")
+    await expect(page.getByRole("link", { name: "O‘yinlar" }).first()).toBeVisible()
+    await expect(page.locator("body")).not.toContainText("Ўйинлар")
+    expect(errors).toEqual([])
+  })
+})
 
 test.describe("Ommaviy sayt", () => {
   test("bosh sahifa loginsiz ochiladi va asosiy bloklar ko‘rinadi", async ({ page }) => {
@@ -245,11 +293,18 @@ test.describe("Admin paneli", () => {
     await expect(page).toHaveURL(/\/admin\/natijalar\/.+/)
   })
 
-  test("yangi jamoa logotip bilan qo‘shiladi va ro‘yxatda paydo bo‘ladi", async ({ page }) => {
+  test("qur’adan keyin jamoa qo‘shilmaydi; yangi mavsumga jamoa logotip bilan qo‘shiladi", async ({ page }) => {
     const name = `Sinov ${Date.now().toString(36)}`
     await loginAsAdmin(page)
+    // Joriy mavsumda qur'a tashlangan — mavsum jamoalari qulflangan
+    await page.goto("/admin/jamoalar")
+    await expect(page.getByText("Qur’a tashlangan — guruhlar shakllangan.")).toBeVisible()
+    await expect(page.getByRole("button", { name: "Jamoa qo‘shish" })).toHaveCount(0)
+    // Yangi mavsum ochilsa, panel o'zi unga o'tadi va jamoa aynan o'sha mavsumga qo'shiladi
+    const season = await openNewDraftSeason(page)
     await page.goto("/admin/jamoalar")
     await page.getByRole("button", { name: "Jamoa qo‘shish" }).click()
+    await expect(page.getByText(new RegExp(`«${season}» \\(\\d{4}, tayyorlanmoqda\\) mavsumiga qo‘shish`))).toBeVisible()
     await page.getByRole("button", { name: "Jamoani qo‘shish" }).click()
     await expect(page.getByText("Jamoa nomini kiriting (kamida 2 ta harf)")).toBeVisible()
     await page.getByLabel("Jamoa nomi").fill(name)
@@ -329,5 +384,133 @@ test.describe("Foydalanuvchilar va rollar", () => {
     await page.getByRole("button", { name: "Parolni almashtirish" }).click()
     await expect(page.getByText("Parol almashtirildi")).toBeVisible()
     expect(errors).toEqual([])
+  })
+})
+
+test.describe("Ramziy jamoa", () => {
+  /** Joriy mavsumning ommaviy ma'lumotlari: saytda faqat e'lon qilingan ramziy jamoalar chiqadi */
+  async function publicRoundTeams(page: import("@playwright/test").Page) {
+    const seasons: { id: string; status: string }[] = await (await page.request.get("/api/public/seasons")).json()
+    const active = seasons.find((s) => s.status === "ACTIVE")!
+    const bundle = await (await page.request.get(`/api/public/seasons/${active.id}/bundle`)).json()
+    return bundle.roundTeams as { slots: { slot: string; playerId: string }[] }[]
+  }
+
+  test("admin tur tugagach 5 futbolchini tanlaydi, rasm yuklaydi, qoralamani saqlaydi, e’lon qiladi va o‘chiradi", async ({ page }) => {
+    const errors = collectErrors(page)
+    await loginAsAdmin(page)
+    await page.goto("/admin/ramziy-jamoa")
+    await expect(page.getByRole("heading", { name: "Ramziy jamoa", level: 1 })).toBeVisible()
+    await expect(page.getByText("Hali tanlanmagan")).toBeVisible()
+    await expect(page.getByRole("button", { name: "E’lon qilish (0/5)" })).toBeDisabled()
+    const round = (await page.getByLabel("Tur", { exact: true }).textContent())!.trim()
+    expect(round).toMatch(/^\d+-tur$/)
+
+    // Darvozabon: ro'yxatda faqat shu turda o'ynagan darvozabonlar, jamoa natijasi bilan
+    const picker = page.locator("aside[aria-labelledby=rt-picker-title]")
+    await page.getByRole("button", { name: "Darvozabon: bo‘sh" }).click()
+    await expect(picker.getByRole("heading", { name: "Darvozabon tanlang" })).toBeVisible()
+    await expect(picker.getByRole("button", { name: "Faqat darvozabonlar" })).toHaveAttribute("aria-pressed", "true")
+    await expect(picker.getByText(/\d+:\d+ (g‘alaba|durang|mag‘lubiyat)/).first()).toBeVisible()
+    const keeperRow = picker.locator("li button").first()
+    const keeper = (await keeperRow.locator("span.truncate").first().textContent())!.trim()
+    await keeperRow.click()
+    await expect(page.getByRole("button", { name: `Darvozabon: ${keeper}` })).toBeVisible()
+    await expect(page.getByRole("button", { name: "E’lon qilish (1/5)" })).toBeDisabled()
+
+    // Rasm yuklash: maydonda va tanlash oynasida odamcha o'rniga rasm chiqadi
+    await picker.locator("input[type=file]").setInputFiles({ name: "rasm.png", mimeType: "image/png", buffer: TINY_PNG })
+    await expect(page.getByText(`${keeper}ning rasmi saqlandi`)).toBeVisible()
+    await expect(picker.getByRole("img", { name: `${keeper} rasmi` })).toHaveAttribute("src", /^\/media\/[0-9a-f-]+\.(webp|png)$/)
+    await expect(page.getByRole("button", { name: `Darvozabon: ${keeper}` }).locator("img")).toHaveAttribute("src", /^\/media\//)
+
+    // Qolgan o'rinlarni avtomatik taklif to'ldiradi; admin tanlagan darvozabon o'zgarmaydi
+    await page.getByRole("button", { name: "Avtomatik taklif" }).click()
+    await expect(page.getByText("4 ta o‘ringa futbolchi qo‘yildi")).toBeVisible()
+    await expect(page.getByRole("button", { name: `Darvozabon: ${keeper}` })).toBeVisible()
+    await expect(page.getByRole("button", { name: /: bo‘sh$/ })).toHaveCount(0)
+
+    // Qoralama saytda ko'rinmaydi
+    await page.getByRole("button", { name: "Qoralama saqlash" }).click()
+    await expect(page.getByText("Qoralama saqlandi. Saytda ko‘rinmaydi.")).toBeVisible()
+    await expect(page.getByText("Qoralama: saytda ko‘rinmaydi")).toBeVisible()
+    expect(await publicRoundTeams(page)).toHaveLength(0)
+
+    // E'lon qilish: sahifa qayta ochilganda ham saqlangan, saytda 5 o'rin bilan chiqadi
+    await page.getByRole("button", { name: "E’lon qilish (5/5)" }).click()
+    await expect(page.getByText(`${round} ramziy jamoasi saytda e’lon qilindi`)).toBeVisible()
+    await page.reload()
+    await expect(page.getByText(/^Saytda e’lon qilingan/)).toBeVisible()
+    await expect(page.getByRole("button", { name: `Darvozabon: ${keeper}` })).toBeVisible()
+    const shown = await publicRoundTeams(page)
+    expect(shown).toHaveLength(1)
+    expect(shown[0].slots.map((s) => s.slot).sort()).toEqual(["DF", "FW", "GK", "MF_L", "MF_R"])
+
+    // Saytda: «Ramziy jamoa» bo'limi, bosh sahifadagi blok va yuklab olinadigan rasm
+    const adminUrl = page.url()
+    await page.goto("/ramziy-jamoa")
+    await expect(page.getByRole("heading", { name: "Ramziy jamoa", level: 1 })).toBeVisible()
+    await expect(page.getByRole("heading", { name: `${round} ramziy jamoasi` })).toBeVisible()
+    const list = page.locator("section[aria-labelledby=rt-list-title] ol > li")
+    await expect(list).toHaveCount(5)
+    await expect(list.filter({ hasText: keeper })).toContainText("darvozabon")
+    await expect(list.first().getByRole("link")).toHaveAttribute("href", /^\/futbolchilar\//)
+    await page.getByRole("button", { name: "Rasmni yuklab olish" }).click()
+    const dialog = page.getByRole("dialog")
+    await expect(dialog.getByRole("img")).toBeVisible({ timeout: 15_000 })
+    await dialog.getByText("Post matni").click()
+    await expect(dialog.locator("pre")).toContainText(`Darvozabon: ${keeper}`)
+    await expect(dialog.locator("pre")).not.toContainText("localhost")
+    const size = await dialog.getByRole("img").evaluate((img: HTMLImageElement) => [img.naturalWidth, img.naturalHeight])
+    expect(size).toEqual([1080, 1350])
+    const download = page.waitForEvent("download")
+    await dialog.getByRole("button", { name: "Yuklab olish" }).click()
+    expect((await download).suggestedFilename()).toMatch(/^payariq-ramziy-jamoa-\d+-tur-\d{4}\.png$/)
+    await page.keyboard.press("Escape")
+    await page.goto("/")
+    const teaser = page.locator("section[aria-labelledby=rt-teaser-title]")
+    await expect(teaser.getByRole("heading", { name: `${round} ramziy jamoasi` })).toBeVisible()
+    await expect(teaser.locator("li")).toHaveCount(5)
+    await page.goto(adminUrl)
+
+    // E'lon qilingandan keyin almashtirish: o'zgarish bo'lmaguncha tugma o'chiq
+    const publishChanges = page.getByRole("button", { name: "O‘zgarishlarni e’lon qilish" })
+    await expect(publishChanges).toBeDisabled()
+    await page.getByRole("button", { name: /^Hujumchi:/ }).click()
+    await picker.getByRole("button", { name: /^Faqat hujumchilar/ }).click()
+    await picker.locator("li button[aria-pressed=false]").first().click()
+    await expect(page.getByText("Saqlanmagan o‘zgarishlar bor")).toBeVisible()
+    await publishChanges.click()
+    await expect(page.getByText("O‘zgarishlar saytda e’lon qilindi")).toBeVisible()
+
+    // Saytdan olish va o'chirish
+    await page.getByRole("button", { name: "Saytdan olish", exact: true }).click()
+    await page.getByRole("alertdialog").getByRole("button", { name: "Saytdan olish", exact: true }).click()
+    await expect(page.getByText(`${round} ramziy jamoasi saytdan olindi`)).toBeVisible()
+    expect(await publicRoundTeams(page)).toHaveLength(0)
+    await page.getByRole("button", { name: "O‘chirish", exact: true }).click()
+    await page.getByRole("alertdialog").getByRole("button", { name: "O‘chirish", exact: true }).click()
+    await expect(page.getByText(`${round} ramziy jamoasi o‘chirildi`)).toBeVisible()
+    await expect(page.getByText("Hali tanlanmagan")).toBeVisible()
+    await expect(page.getByRole("button", { name: /: bo‘sh$/ })).toHaveCount(5)
+    expect(errors).toEqual([])
+  })
+
+  test("telefonda o‘rin bosilganda tanlash oynasi pastdan ochiladi", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 })
+    await loginAsAdmin(page)
+    await page.goto("/admin/ramziy-jamoa")
+    await noHorizontalScroll(page)
+    // Ikki yarim himoyachi o'rni ekran o'quvchida ham ajraladi
+    await expect(page.getByRole("button", { name: "Chap yarim himoyachi: bo‘sh" })).toHaveCount(1)
+    await expect(page.getByRole("button", { name: "O‘ng yarim himoyachi: bo‘sh" })).toHaveCount(1)
+    await page.getByRole("button", { name: "Himoyachi: bo‘sh", exact: true }).click()
+    const sheet = page.getByRole("dialog", { name: "Himoyachi tanlang" })
+    await expect(sheet).toBeVisible()
+    await sheet.locator("li button").first().click()
+    await expect(sheet.getByRole("button", { name: "Maydondan olish" })).toBeVisible()
+    await page.keyboard.press("Escape")
+    await expect(page.getByRole("button", { name: /^Himoyachi: (?!bo‘sh)/ })).toBeVisible()
+    await noHorizontalScroll(page)
   })
 })

@@ -4,7 +4,7 @@ import { Link } from "react-router"
 import { Bracket, BracketMatch, ChampionBanner, nextStepLabel, playoffRounds } from "@/components/league/bracket"
 import { EmptyState, ErrorState, PageHeader, PageSkeleton } from "@/components/league/states"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { createBracket, isPlayInRound, playoffPlan, groupFinishes, seedLotsFrom, ROUND_LABELS, roundLabel } from "@/domain/playoff"
+import { ROUND_LABELS, createBracket, groupFinishes, isPlayInRound, playoffPlan, roundLabel, seedLotsFrom, withPositionLabels } from "@/domain/playoff"
 import type { Match, PlayoffRoundKey } from "@/domain/types"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { useMyTeam } from "@/hooks/use-my-team"
@@ -79,7 +79,7 @@ export default function PlayoffPage() {
     const plan = playoffPlan(groupFinishes(groups, standings, season.rules), seedLotsFrom(index.bundle.lots ?? []))
     if (plan.error) return { matches: [], projected: true, error: plan.error, summary: undefined }
     let n = 0
-    const matches = createBracket({
+    const bracket = createBracket({
       seasonId: season.id,
       plan,
       thirdPlace: season.rules.thirdPlaceMatch,
@@ -88,7 +88,8 @@ export default function PlayoffPage() {
       // Taxminiy setka: sana hali e'lon qilinmagan
       timeConfirmed: false,
     })
-    return { matches, projected: true, error: undefined, summary: planSummary(plan) }
+    // Guruh bosqichi tugamaguncha jamoa nomlari emas, guruhdagi o'rinlar ko'rsatiladi
+    return { matches: withPositionLabels(bracket, plan), projected: true, error: undefined, summary: planSummary(plan) }
   }, [index])
 
   if (isLoading && !index) return <PageSkeleton />
@@ -108,7 +109,7 @@ export default function PlayoffPage() {
         <p className="mb-5 flex items-start gap-2 rounded-xl border border-gold/40 bg-gold-soft px-4 py-3 text-sm">
           <Info className="mt-0.5 size-4 shrink-0 text-gold-text" aria-hidden="true" />
           <span>
-            Bu — hozirgi turnir jadvali bo‘yicha taxminiy juftliklar. Jadval o‘zgarsa, juftliklar ham o‘zgaradi. Guruh bosqichi tugashi bilan setka avtomatik tasdiqlanadi.
+            Setka hali tuzilmagan: guruh bosqichining barcha o‘yinlari tugagach, jadval bo‘yicha avtomatik tuziladi va o‘rinlarga jamoalar joylashadi. Bir guruh jamoalari birinchi bosqichda uchrashmaydi.
             {data.summary && <span className="mt-1 block font-semibold">{data.summary}</span>}
           </span>
         </p>

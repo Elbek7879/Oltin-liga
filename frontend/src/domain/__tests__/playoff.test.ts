@@ -10,6 +10,7 @@ import {
   type GroupFinish,
   type PlayoffPlan,
   type TeamRecord,
+  withPositionLabels,
 } from "../playoff"
 
 let uid = 0
@@ -131,5 +132,27 @@ describe("moslashuvchan pley-off", () => {
     expect(qualifiersFor(rules, 5)).toBe(3)
     expect(qualifiersFor(rules, 3)).toBe(2)
     expect(qualifiersFor({ qualifiersPerGroup: 4, qualifiersBySize: {} }, 3)).toBe(2)
+  })
+})
+
+describe("taxminiy setka (guruh bosqichi tugamagan)", () => {
+  it("2 ta guruh: Jahon chempionatidagidek A g‘olibi — B 2-o‘rni va B g‘olibi — A 2-o‘rni, jamoa nomlarisiz", () => {
+    const plan = playoffPlan(groups(0, 2))
+    let n = 0
+    const bracket = createBracket({ seasonId: "s", plan, thirdPlace: false, kickoffFor: () => "2026-11-01T18:00:00+05:00", newId: () => `p${n++}`, timeConfirmed: false })
+    const shown = withPositionLabels(bracket, plan)
+    const semis = shown.filter((m) => m.playoffRound === "SF").map((m) => [m.homeLabel, m.awayLabel].sort().join(" — "))
+    expect(semis.sort()).toEqual(["A guruhi 2-o‘rni — B guruhi g‘olibi", "A guruhi g‘olibi — B guruhi 2-o‘rni"])
+    // Hech bir o'yinda aniq jamoa yo'q — setka hali tuzilmagan
+    expect(shown.every((m) => m.homeId === null && m.awayId === null)).toBe(true)
+  })
+
+  it("saralash o‘yini bo‘lsa, «Saralash g‘olibi» yozuvi saqlanadi", () => {
+    const plan = playoffPlan(groups(1, 2))
+    let n = 0
+    const bracket = createBracket({ seasonId: "s", plan, thirdPlace: false, kickoffFor: () => "2026-11-01T18:00:00+05:00", newId: () => `p${n++}`, timeConfirmed: false })
+    const labels = withPositionLabels(bracket, plan).flatMap((m) => [m.homeLabel, m.awayLabel])
+    expect(labels.some((l) => l?.includes("guruhi g‘olibi"))).toBe(true)
+    expect(labels.every((l) => l && !/^t\d+$/.test(l))).toBe(true)
   })
 })

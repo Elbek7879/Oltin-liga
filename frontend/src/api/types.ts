@@ -10,11 +10,14 @@ import type {
   LeagueSettings,
   Match,
   MatchEvent,
+  MatchStage,
   MatchStatus,
   News,
   PlayoffRoundKey,
   PointAdjustment,
   Position,
+  RoundTeam,
+  RoundTeamSlotKey,
   Season,
   SeasonAward,
   SeasonRules,
@@ -45,6 +48,7 @@ export interface PublicPlayer {
   lastName: string
   position: Position | null
   birthYear?: number
+  photoUrl?: string | null
 }
 
 export interface RosterView {
@@ -81,6 +85,17 @@ export interface SeasonBundle {
   adjustments: PointAdjustment[]
   /** Teng holatdagi qur'a natijalari */
   lots: TiebreakLot[]
+  /** E'lon qilingan ramziy jamoalar (qoralamalar faqat admin panelda) */
+  roundTeams?: RoundTeam[]
+}
+
+export interface RoundTeamInput {
+  stage: MatchStage
+  round?: number | null
+  playoffRound?: PlayoffRoundKey | null
+  slots: { slot: RoundTeamSlotKey; playerId: ID }[]
+  /** false — qoralama, true — saytda e'lon qilinadi (5 o'rin ham to'lishi kerak) */
+  publish: boolean
 }
 
 /** scope: "GROUP:<guruh id>" — guruhdagi o'rin; "SEED:<o'rin>" — pley-off reytingi */
@@ -353,6 +368,8 @@ export interface LeagueApi {
   deletePlayer(playerId: ID): Promise<void>
 
   saveGroups(seasonId: ID, groups: { name: string; teamIds: ID[] }[]): Promise<void>
+  /** Qur'ani bekor qilish: guruhlar va guruh juftliklari o'chiriladi (natija kiritilmagan bo'lsa) */
+  resetGroups(seasonId: ID): Promise<void>
 
   createMatch(seasonId: ID, input: MatchInput): Promise<Match>
   updateMatch(matchId: ID, input: MatchInput): Promise<Match>
@@ -386,7 +403,19 @@ export interface LeagueApi {
   deleteVenue(id: ID): Promise<void>
   /** Rasm yuklaydi va uning manzilini qaytaradi */
   uploadMedia(file: Blob, filename: string): Promise<{ url: string }>
+
+  // Ramziy jamoa
+  listRoundTeams(seasonId: ID): Promise<RoundTeam[]>
+  saveRoundTeam(seasonId: ID, input: RoundTeamInput): Promise<RoundTeam>
+  deleteRoundTeam(id: ID): Promise<void>
+  /** Futbolchi rasmi; null — olib tashlash */
+  setPlayerPhoto(playerId: ID, photoUrl: string | null): Promise<void>
   resetDemoData(): Promise<void>
+}
+
+/** Server «topilmadi» yoki «noto‘g‘ri manzil» deb javob berdi — qayta urinish foydasiz */
+export function isNotFound(error: unknown) {
+  return error instanceof ApiError && (error.status === 404 || error.status === 400)
 }
 
 export class ApiError extends Error {

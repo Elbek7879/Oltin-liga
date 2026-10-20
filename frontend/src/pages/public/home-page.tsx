@@ -2,9 +2,11 @@ import { CalendarX, Megaphone, Trophy } from "lucide-react"
 import { useMemo, useState } from "react"
 import { Link } from "react-router"
 import { useNews } from "@/api/hooks"
+import { AboutCard } from "@/components/league/about-card"
 import { FeaturedMatch } from "@/components/league/featured-match"
 import { MyTeamPanel } from "@/components/league/my-team-panel"
 import { MatchRow } from "@/components/league/match-row"
+import { RoundTeamTeaser } from "@/components/league/round-team-teaser"
 import { ScorersList } from "@/components/league/scorers-list"
 import { StandingsTable } from "@/components/league/standings-table"
 import { EmptyState, ErrorState, PageSkeleton, SectionHeader } from "@/components/league/states"
@@ -201,6 +203,8 @@ export default function HomePage() {
               )}
             </div>
           </section>
+          <RoundTeamTeaser index={index} />
+          <AboutCard />
         </aside>
       </div>
 

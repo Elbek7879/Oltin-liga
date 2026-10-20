@@ -1,10 +1,14 @@
-import { ArrowLeft, Award } from "lucide-react"
+import { ArrowLeft, Award, Shirt, UserRound } from "lucide-react"
+import { useMemo } from "react"
 import { Link, useParams } from "react-router"
 import { usePlayerProfile } from "@/api/hooks"
-import { ErrorState, PageSkeleton } from "@/components/league/states"
+import { isNotFound } from "@/api/types"
+import { ErrorState, NotFoundState, PageSkeleton } from "@/components/league/states"
 import { TeamCrest } from "@/components/league/team-crest"
 import type { AwardType } from "@/domain/types"
+import { useSeasonData } from "@/hooks/use-season-data"
 import { positionLabel } from "@/lib/format"
+import { publishedRoundTeams } from "@/lib/round-team-view"
 
 const AWARD_LABEL: Partial<Record<AwardType, string>> = {
   TOP_SCORER: "Mavsumning eng yaxshi to‘purari",
@@ -15,7 +19,12 @@ const AWARD_LABEL: Partial<Record<AwardType, string>> = {
 export default function PlayerPage() {
   const { playerId = "" } = useParams()
   const { data, isLoading, error, refetch } = usePlayerProfile(playerId)
+  const { index } = useSeasonData()
+  // Tanlangan mavsumda futbolchi qaysi turlarda ramziy jamoaga kirgan
+  const roundTeams = useMemo(() => (index ? publishedRoundTeams(index).filter((t) => t.team.slots.some((s) => s.playerId === playerId)).reverse() : []), [index, playerId])
   if (isLoading) return <PageSkeleton />
+  if (isNotFound(error))
+    return <NotFoundState icon={UserRound} title="Futbolchi topilmadi" description="Havola eskirgan yoki futbolchi o‘chirilgan bo‘lishi mumkin." backTo="/futbolchilar" backLabel="Barcha futbolchilar" />
   if (error || !data) return <ErrorState message={error?.message} onRetry={() => refetch()} className="container-page" />
 
   const { player, records, awards } = data
@@ -41,9 +50,19 @@ export default function PlayerPage() {
             Futbolchilar
           </Link>
           <div className="flex items-center gap-4">
-            <span className="flex size-16 shrink-0 items-center justify-center rounded-full border-2 border-gold-400 font-display text-2xl text-gold-400 md:size-20 md:text-3xl" aria-hidden="true">
-              {initials}
-            </span>
+            {player.photoUrl ? (
+              <img
+                src={player.photoUrl}
+                alt=""
+                width={80}
+                height={80}
+                className="size-16 shrink-0 rounded-full border-2 border-gold-400 object-cover object-[50%_25%] md:size-20"
+              />
+            ) : (
+              <span className="flex size-16 shrink-0 items-center justify-center rounded-full border-2 border-gold-400 font-display text-2xl text-gold-400 md:size-20 md:text-3xl" aria-hidden="true">
+                {initials}
+              </span>
+            )}
             <div className="min-w-0">
               <h1 className="truncate font-display text-3xl md:text-5xl">
                 {player.firstName} {player.lastName}
@@ -76,6 +95,23 @@ export default function PlayerPage() {
             ))}
           </dl>
           <p className="mt-2 text-xs text-band-muted">Barcha mavsumlar bo‘yicha jami</p>
+          {roundTeams.length > 0 && (
+            <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
+              <span className="inline-flex items-center gap-1.5 font-semibold text-gold-300">
+                <Shirt className="size-4" aria-hidden="true" />
+                Ramziy jamoada:
+              </span>
+              {roundTeams.map((t) => (
+                <Link
+                  key={t.slug}
+                  to={`/ramziy-jamoa?tur=${t.slug}`}
+                  className="inline-flex min-h-9 items-center rounded-full border border-gold-400/50 px-3 font-semibold transition-colors duration-150 hover:bg-white/10"
+                >
+                  {t.label}
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

@@ -39,10 +39,12 @@ public class TeamPlayerService {
     private final AppearanceRepository appearances;
     private final SeasonDataLoader loader;
     private final AuditService audit;
+    private final uz.payariq.liga.repo.RoundTeamRepository roundTeams;
 
     public TeamPlayerService(TeamRepository teams, SeasonTeamRepository seasonTeams, PlayerRepository players, RosterEntryRepository rosters,
                              LeagueGroupRepository groups, MatchRepository matches, MatchEventRepository events, AppearanceRepository appearances,
-                             SeasonDataLoader loader, AuditService audit) {
+                             SeasonDataLoader loader, AuditService audit, uz.payariq.liga.repo.RoundTeamRepository roundTeams) {
+        this.roundTeams = roundTeams;
         this.teams = teams;
         this.seasonTeams = seasonTeams;
         this.players = players;
@@ -60,6 +62,7 @@ public class TeamPlayerService {
     public TeamDto createTeam(Requests.TeamInput in, UUID addToSeasonId) {
         String name = in.name().trim();
         if (teams.existsByNameIgnoreCase(name)) throw ApiException.conflict("«" + name + "» nomli jamoa allaqachon bor.");
+        if (addToSeasonId != null) ensureTeamListOpen(addToSeasonId, "yangi jamoa qo‘shib");
         Team t = new Team();
         apply(t, in);
         teams.save(t);
@@ -103,6 +106,8 @@ public class TeamPlayerService {
         loader.editableSeason(seasonId);
         Team t = team(teamId);
         SeasonTeam st = seasonTeams.findBySeasonIdAndTeamId(seasonId, teamId).orElse(null);
+        if (inSeason == (st != null)) return;
+        ensureTeamListOpen(seasonId, inSeason ? "yangi jamoa qo‘shib" : "jamoani mavsumdan chiqarib");
         if (inSeason && st == null) {
             addToSeason(t, seasonId);
             audit.record("Jamoa", "«" + t.name + "» mavsumga qo‘shildi", "TEAM", teamId);
@@ -113,6 +118,13 @@ public class TeamPlayerService {
             removeSeasonTeam(st);
             audit.record("Jamoa", "«" + t.name + "» mavsumdan chiqarildi", "TEAM", teamId);
         }
+    }
+
+    /** Qur'a tashlangach mavsum ishtirokchilari qulflanadi — aks holda jamoa guruhsiz qoladi yoki guruh juftliklari buziladi */
+    private void ensureTeamListOpen(UUID seasonId, String action) {
+        if (groups.findBySeasonIdOrderBySortOrderAsc(seasonId).isEmpty()) return;
+        throw ApiException.conflict("Qur’a tashlangan — guruhlar shakllangan, bu mavsumga " + action + " bo‘lmaydi. "
+                + "Jamoa esdan chiqqan bo‘lsa va hali birorta natija kiritilmagan bo‘lsa, «Guruhlar» bo‘limida qur’ani bekor qiling.");
     }
 
     private void addToSeason(Team t, UUID seasonId) {
@@ -222,6 +234,9 @@ public class TeamPlayerService {
         Player p = players.findById(playerId).orElseThrow(() -> ApiException.notFound("Futbolchi topilmadi."));
         if (events.existsForPlayer(playerId) || appearances.existsByPlayerId(playerId)) {
             throw ApiException.conflict("Bu futbolchining o‘yinlar statistikasi bor, uni o‘chirib bo‘lmaydi. Uning o‘rniga jamoa tarkibidan chiqaring.");
+        }
+        if (roundTeams.existsWithPlayer(playerId)) {
+            throw ApiException.conflict("Bu futbolchi ramziy jamoada turibdi — o‘chirishdan oldin uni ramziy jamoada boshqa futbolchiga almashtiring.");
         }
         rosters.deleteAll(rosters.findByPlayerId(playerId));
         for (SeasonTeam st : seasonTeams.findAll()) if (playerId.equals(st.captainId)) st.captainId = null;

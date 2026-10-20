@@ -108,11 +108,24 @@ export function findScheduleConflicts(
   return conflicts
 }
 
-/** Bir o'yin stadionni taxminan shuncha vaqt band qiladi: 2×45 daqiqa, tanaffus va jamoalar almashinuvi */
-export const VENUE_BUSY_MINUTES = 120
+/** Liga o'yini: 2 × 20 daqiqa (mavsum nizomida o'zgartiriladi) */
+export const DEFAULT_HALF_MINUTES = 20
 
-/** Shu stadionda shu vaqtga yaqin (2 soatdan kam farq bilan) boshqa o'yin bo'lsa, o'sha o'yinlarni qaytaradi */
-export function findVenueConflicts(candidate: Pick<Match, "id" | "venueId" | "kickoff">, matches: Match[]): Match[] {
+/** Bir o'yin stadionni taxminan shuncha daqiqa band qiladi: ikki bo'lim, tanaffus va jamoalar almashinuvi (2×20 da 1 soat) */
+export function venueBusyMinutes(halfMinutes: number = DEFAULT_HALF_MINUTES) {
+  return 2 * halfMinutes + 20
+}
+
+/** «1 soat», «1 soat 10 daqiqa», «50 daqiqa» */
+export function durationLabel(minutes: number) {
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  if (!h) return `${m} daqiqa`
+  return m ? `${h} soat ${m} daqiqa` : `${h} soat`
+}
+
+/** Shu stadionda o'yin davomiyligidan kam farq bilan boshqa o'yin bo'lsa, o'sha o'yinlarni qaytaradi */
+export function findVenueConflicts(candidate: Pick<Match, "id" | "venueId" | "kickoff">, matches: Match[], busyMinutes = venueBusyMinutes()): Match[] {
   const t = new Date(candidate.kickoff).getTime()
   if (!candidate.venueId || Number.isNaN(t)) return []
   return matches.filter(
@@ -122,8 +135,62 @@ export function findVenueConflicts(candidate: Pick<Match, "id" | "venueId" | "ki
       m.venueId === candidate.venueId &&
       m.status !== "CANCELLED" &&
       m.status !== "POSTPONED" &&
-      Math.abs(new Date(m.kickoff).getTime() - t) < VENUE_BUSY_MINUTES * 60_000,
+      Math.abs(new Date(m.kickoff).getTime() - t) < busyMinutes * 60_000,
   )
+}
+
+/**
+ * Navbatdagi o'yinlar: sanasi hali belgilanmagan o'yinlardan keyingi o'yin kuni uchun `size` tasi.
+ * Tartib — guruh bosqichi turlar bo'yicha (tur ichida A, B, C… guruhlar tartibida), keyin pley-off bosqichlari.
+ * Bir jamoa bir kunda ikki marta o'ynamaydi; navbatdan qolgan o'yin jamoalarining keyingi o'yinlari ham kutadi —
+ * shunda har jamoa o'yinlarini turlar tartibida o'ynaydi. Sanani sayt qo'ymaydi, faqat navbatni ko'rsatadi.
+ */
+export function nextMatchQueue(matches: Match[], groupOrder: ID[], size: number): Match[] {
+  const open = matches
+    .map((m, i) => ({ m, i }))
+    .filter(({ m }) => m.timeConfirmed === false && (m.status === "SCHEDULED" || m.status === "POSTPONED"))
+  const key = ({ m, i }: { m: Match; i: number }) =>
+    m.stage === "GROUP"
+      ? [0, m.round ?? 0, groupOrder.indexOf(m.groupId ?? ""), i]
+      : [1, PLAYOFF_ORDER.indexOf(m.playoffRound ?? ""), 0, i]
+  open.sort((a, b) => {
+    const ka = key(a)
+    const kb = key(b)
+    for (let k = 0; k < ka.length; k++) if (ka[k] !== kb[k]) return ka[k] - kb[k]
+    return 0
+  })
+  const picked: Match[] = []
+  const taken = new Set<ID>()
+  for (const { m } of open) {
+    if (picked.length >= size) break
+    const teams = [m.homeId, m.awayId].filter((t): t is ID => Boolean(t))
+    if (teams.some((t) => taken.has(t))) {
+      // Bu o'yin keyingi kunga qoladi — uning jamoalari ham bugun boshqa (keyingi tur) o'yinga chiqmaydi
+      teams.forEach((t) => taken.add(t))
+      continue
+    }
+    picked.push(m)
+    teams.forEach((t) => taken.add(t))
+  }
+  return picked
+}
+
+/** Guruh o'yinini o'chirish mumkinmi: juftlikning shu guruhda boshqa o'yini nizomdagi sondan kam bo'lmasa (davra tizimi buzilmasin) */
+export function canDeleteGroupMatch(match: Match, matches: Match[], legs: number) {
+  if (match.stage !== "GROUP" || match.status === "FINISHED" || match.status === "LIVE") return false
+  if (!match.groupId || !match.homeId || !match.awayId) return true
+  const pair = [match.homeId, match.awayId].sort().join("|")
+  const others = matches.filter((x) => x.id !== match.id && x.groupId === match.groupId && [x.homeId, x.awayId].sort().join("|") === pair).length
+  return others >= legs
+}
+
+/** «15:00» + daqiqa → «16:00»; yarim tundan oshsa null */
+export function addMinutesToTime(time: string, minutes: number): string | null {
+  const match = /^(\d{2}):(\d{2})$/.exec(time)
+  if (!match) return null
+  const total = Number(match[1]) * 60 + Number(match[2]) + minutes
+  if (total >= 24 * 60) return null
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`
 }
 
 /** Asosiy stadion: o'yinlarda eng ko'p ishlatilgani, o'yin bo'lmasa — ro'yxatdagi birinchisi */

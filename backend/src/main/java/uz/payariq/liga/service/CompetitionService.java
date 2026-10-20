@@ -94,11 +94,31 @@ public class CompetitionService {
         playoffs.sync(seasonId);
     }
 
+    /**
+     * Qur'ani bekor qiladi: guruhlar va guruh bosqichi juftliklari (sanalari bilan) o'chiriladi, jamoalar mavsumda qoladi.
+     * Jamoa esdan chiqqan bo'lsa shu yo'l bilan qo'shiladi. Birorta natija kiritilgan bo'lsa — ruxsat yo'q.
+     */
+    public void resetGroups(UUID seasonId) {
+        Season s = loader.editableSeason(seasonId);
+        List<LeagueGroup> existing = groups.findBySeasonIdOrderBySortOrderAsc(seasonId);
+        if (existing.isEmpty()) throw ApiException.conflict("Bu mavsumda hali qur’a tashlanmagan.");
+        List<Match> groupMatches = matches.findBySeasonIdAndStage(seasonId, MatchStage.GROUP);
+        boolean played = groupMatches.stream().anyMatch(Match::hasResult)
+                || matches.findBySeasonIdAndStage(seasonId, MatchStage.PLAYOFF).stream().anyMatch(Match::hasResult);
+        if (played) throw ApiException.conflict("Natija kiritilgan — qur’ani endi bekor qilib bo‘lmaydi.");
+        matches.deleteAll(groupMatches);
+        groups.deleteAll(existing);
+        groups.flush();
+        audit.record("Qur’a", s.name + ": qur’a bekor qilindi — " + existing.size() + " ta guruh va " + groupMatches.size() + " ta juftlik o‘chirildi",
+                "SEASON", seasonId);
+        playoffs.sync(seasonId);
+    }
+
     // ---------- O'yinlar ----------
 
     public MatchDto createMatch(UUID seasonId, Requests.MatchInput in) {
         loader.editableSeason(seasonId);
-        assertInput(seasonId, in);
+        assertInput(seasonId, in, null);
         Match m = new Match();
         m.seasonId = seasonId;
         m.stage = in.stage();
@@ -130,8 +150,8 @@ public class CompetitionService {
         if (m.stage == MatchStage.PLAYOFF && (!Objects.equals(in.homeId(), m.homeId) || !Objects.equals(in.awayId(), m.awayId))) {
             throw ApiException.conflict("Pley-off jamoalari sxema bo‘yicha avtomatik belgilanadi.");
         }
-        if (!hasResult) assertInput(m.seasonId, new Requests.MatchInput(m.stage, in.groupId(), in.round(), m.playoffRound, in.homeId(), in.awayId(),
-                in.kickoff(), in.venueId(), in.status(), in.referee(), in.note()));
+        if (!hasResult) assertInput(m.seasonId, new Requests.MatchInput(m.stage, in.groupId() != null ? in.groupId() : m.groupId, in.round(), m.playoffRound,
+                in.homeId(), in.awayId(), in.kickoff(), in.venueId(), in.status(), in.referee(), in.note()), m.getId());
         Instant newKickoff = in.kickoff().toInstant();
         boolean moved = !newKickoff.equals(m.kickoff);
         if (m.stage == MatchStage.GROUP && in.groupId() != null) m.groupId = in.groupId();
@@ -156,12 +176,26 @@ public class CompetitionService {
         loader.editableSeason(m.seasonId);
         if (m.hasResult()) throw ApiException.conflict("Natijasi kiritilgan o‘yinni o‘chirib bo‘lmaydi. Kerak bo‘lsa, uni «Bekor qilingan» deb belgilang.");
         if (m.stage == MatchStage.PLAYOFF) throw ApiException.conflict("Pley-off o‘yinlari sxema orqali boshqariladi. «Pley-off» bo‘limidan foydalaning.");
+        if (m.stage == MatchStage.GROUP && m.groupId != null && m.homeId != null && m.awayId != null) {
+            // Davra tizimi buzilmasin: har juftlik nizomdagi sondan kam uchrashmasligi kerak (aks holda setka to'liqmas jadval bo'yicha tuziladi)
+            Season s = loader.season(m.seasonId);
+            Set<UUID> pair = Set.of(m.homeId, m.awayId);
+            long others = matches.findBySeasonIdAndStage(m.seasonId, MatchStage.GROUP).stream()
+                    .filter(x -> !x.getId().equals(m.getId()) && m.groupId.equals(x.groupId))
+                    .filter(x -> x.homeId != null && x.awayId != null && pair.equals(Set.of(x.homeId, x.awayId)))
+                    .count();
+            if (others < s.legs) {
+                throw ApiException.conflict("Bu juftlikning guruhdagi o‘yini — uni o‘chirsangiz, jamoalar o‘zaro o‘ynamay qoladi va jadval to‘liq bo‘lmaydi. "
+                        + "O‘yin o‘tkazilmasa, uni «Bekor qilingan» deb belgilang yoki natijalar bo‘limida texnik natija kiriting.");
+            }
+        }
         matches.delete(m);
         audit.record("O‘yin", name(m.homeId) + " — " + name(m.awayId) + " o‘yini o‘chirildi", "MATCH", matchId);
         playoffs.sync(m.seasonId);
     }
 
-    private void assertInput(UUID seasonId, Requests.MatchInput in) {
+    /** selfId — tahrirlanayotgan o'yin (takroriy juftlikni sanashda o'zi hisobga olinmaydi) */
+    private void assertInput(UUID seasonId, Requests.MatchInput in, UUID selfId) {
         if (in.status() == MatchStatus.FINISHED || in.status() == MatchStatus.LIVE) {
             throw ApiException.badRequest("Hisob va «Davom etmoqda / Yakunlangan» holati «Natijalar» bo‘limida kiritiladi.");
         }
@@ -177,6 +211,17 @@ public class CompetitionService {
             if (g == null) throw ApiException.badRequest("Guruhni tanlang.");
             if (!g.seasonTeamIds.contains(in.homeId()) || !g.seasonTeamIds.contains(in.awayId())) {
                 throw ApiException.badRequest("Ikkala jamoa ham " + g.name + " guruhida bo‘lishi kerak.");
+            }
+            // Guruhda har juftlik nizomdagidek uchrashadi: bir davrali — bir marta, ikki davrali — ikki marta (bekor qilingani hisobga olinmaydi)
+            Season s = loader.season(seasonId);
+            long same = matches.findBySeasonIdAndStage(seasonId, MatchStage.GROUP).stream()
+                    .filter(x -> !x.getId().equals(selfId) && x.status != MatchStatus.CANCELLED && g.getId().equals(x.groupId))
+                    .filter(x -> Set.of(in.homeId(), in.awayId()).equals(new java.util.HashSet<>(java.util.Arrays.asList(x.homeId, x.awayId))))
+                    .count();
+            if (same >= s.legs) {
+                throw ApiException.conflict(name(in.homeId()) + " va " + name(in.awayId()) + " " + g.name + " guruhida allaqachon "
+                        + (s.legs == 2 ? "ikki marta" : "bir marta") + " o‘ynaydi — nizom bo‘yicha boshqa o‘yin qo‘shib bo‘lmaydi. "
+                        + "Sanani o‘zgartirish kerak bo‘lsa, o‘sha o‘yinni tahrirlang.");
             }
         }
     }

@@ -157,6 +157,13 @@ public class AdminController {
         return ResponseEntity.noContent().build();
     }
 
+    /** Qur'ani bekor qilish (hali birorta natija kiritilmagan bo'lsa): guruhlar va guruh juftliklari o'chiriladi */
+    @DeleteMapping("/seasons/{seasonId}/groups")
+    public ResponseEntity<Void> resetGroups(@PathVariable UUID seasonId) {
+        competition.resetGroups(seasonId);
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping("/seasons/{seasonId}/matches")
     public MatchDto createMatch(@PathVariable UUID seasonId, @Valid @RequestBody Requests.MatchInput in) {
         return competition.createMatch(seasonId, in);

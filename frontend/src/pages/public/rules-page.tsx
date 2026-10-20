@@ -4,6 +4,7 @@ import { Link } from "react-router"
 import { ErrorState, PageHeader, PageSkeleton } from "@/components/league/states"
 import { YELLOWS_FOR_BAN } from "@/domain/discipline"
 import { firstRoundFor, groupFinishes, playoffPlan, qualifiersFor, ROUND_LABELS, seedLotsFrom } from "@/domain/playoff"
+import { DEFAULT_HALF_MINUTES } from "@/domain/schedule"
 import { FAIR_PLAY_POINTS, TIEBREAKER_LABELS } from "@/domain/standings"
 import { useSeasonData } from "@/hooks/use-season-data"
 import { UNCONFIRMED_DATE } from "@/lib/playoff-overview"
@@ -100,6 +101,7 @@ export default function RulesPage() {
         <Section id="guruh" icon={ListOrdered} title="Guruh bosqichi">
           <p>
             Jamoalar qur’a bilan guruhlarga bo‘linadi. Har bir jamoa o‘z guruhidagi har bir raqib bilan {rules.legs === 2 ? "ikki marta" : "bir marta"} o‘ynaydi.
+            O‘yin <b>2 × {rules.halfMinutes ?? DEFAULT_HALF_MINUTES} daqiqa</b> davom etadi, bo‘limlar orasida tanaffus bor.
           </p>
           <p>
             G‘alaba — <b>{rules.pointsWin} ochko</b>, durang — <b>{rules.pointsDraw} ochko</b>, mag‘lubiyat — <b>{rules.pointsLoss} ochko</b>. Guruh bosqichida qo‘shimcha vaqt va penaltilar

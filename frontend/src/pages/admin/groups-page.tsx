@@ -1,4 +1,4 @@
-import { Dices, Hand, Layers, Lock, RotateCcw, Save, Sparkles, TriangleAlert } from "lucide-react"
+import { Dices, Hand, Layers, Lock, RotateCcw, Save, Sparkles, TriangleAlert, Undo2 } from "lucide-react"
 import { useMemo, useState } from "react"
 import { Link } from "react-router"
 import { api } from "@/api/client"
@@ -98,6 +98,7 @@ export default function AdminGroupsPage() {
   const [potOverride, setPotOverride] = useState<Record<ID, number>>({})
   const [drawNo, setDrawNo] = useState(0)
   const save = useAdminMutation((groups: DrawGroup[]) => api.saveGroups(index!.bundle.season.id, groups.map((g) => ({ name: g.name, teamIds: g.teamIds }))))
+  const resetDraw = useAdminMutation(() => api.resetGroups(index!.bundle.season.id))
 
   // O'tgan (yakunlangan) mavsum — savatlar uchun kuch reytingi
   const previous = useMemo(
@@ -171,9 +172,33 @@ export default function AdminGroupsPage() {
       <ReadOnlyBanner />
 
       <section aria-labelledby="current-title" className="mb-6">
-        <h2 id="current-title" className="section-title mb-3">
-          Hozirgi guruhlar
-        </h2>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 id="current-title" className="section-title">
+            Hozirgi guruhlar
+          </h2>
+          {groups.length > 0 && !started && !readOnly && (
+            <ConfirmAction
+              destructive
+              trigger={
+                <Button variant="outline" size="sm" disabled={resetDraw.isPending}>
+                  <Undo2 aria-hidden="true" />
+                  Qur’ani bekor qilish
+                </Button>
+              }
+              title="Qur’ani bekor qilasizmi?"
+              description={
+                <>
+                  <p>
+                    {groups.length} ta guruh va {scheduled} ta juftlik (belgilangan sanalari bilan) o‘chiriladi. Jamoalar mavsumda qoladi.
+                  </p>
+                  <p className="mt-1">Shundan keyin «Jamoalar» bo‘limida jamoa qo‘shish yoki chiqarish mumkin bo‘ladi, so‘ng qur’ani qaytadan tashlaysiz.</p>
+                </>
+              }
+              confirmLabel="Ha, bekor qilish"
+              onConfirm={() => runAction(() => resetDraw.mutateAsync(undefined), "Qur’a bekor qilindi. Jamoalarni o‘zgartirib, qur’ani qaytadan tashlang.")}
+            />
+          )}
+        </div>
         {groups.length === 0 ? (
           <div className="panel">
             <EmptyState icon={Layers} title="Guruhlar hali tuzilmagan" description="Quyida variantni tanlab, qur’a tashlang." />

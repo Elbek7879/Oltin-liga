@@ -7,7 +7,7 @@ import { TeamCrest } from "@/components/league/team-crest"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { findScheduleConflicts, findVenueConflicts, primaryVenueId, toLocalIso } from "@/domain/schedule"
+import { addMinutesToTime, durationLabel, findScheduleConflicts, findVenueConflicts, primaryVenueId, toLocalIso, venueBusyMinutes } from "@/domain/schedule"
 import type { ID, Match } from "@/domain/types"
 import type { SeasonIndex } from "@/hooks/use-season-data"
 import { formatShortDate, formatTime, localDateKey } from "@/lib/format"
@@ -19,7 +19,11 @@ export interface ScheduleSection {
   key: string
   title: string
   matches: Match[]
+  /** Bitta o'yin kuni: sarlavhada kun, birinchi o'yin vaqti va oralig'i — hammasiga bir bosishda qo'yiladi */
+  day?: boolean
 }
+
+const STEP_OPTIONS = [45, 50, 60, 70, 80, 90, 120]
 
 interface Draft {
   date: string
@@ -47,10 +51,14 @@ const sideName = (m: Match, side: "home" | "away", index: SeasonIndex) =>
  */
 export function ScheduleBoard({ sections, index, readOnly, metaOf }: { sections: ScheduleSection[]; index: SeasonIndex; readOnly: boolean; metaOf?: (m: Match) => string }) {
   const fallbackVenue = primaryVenueId(index.bundle.venues, index.bundle.matches) ?? NO_VENUE
+  const busyMinutes = venueBusyMinutes(index.bundle.season.rules.halfMinutes)
   const all = useMemo(() => sections.flatMap((s) => s.matches), [sections])
   const signature = all.map((m) => `${m.id}:${m.kickoff}:${m.timeConfirmed}:${m.venueId}`).join("|")
   const [drafts, setDrafts] = useState<Record<ID, Draft>>({})
   const [roundDate, setRoundDate] = useState<Record<string, string>>({})
+  const [dayStart, setDayStart] = useState("")
+  const [dayStep, setDayStep] = useState(busyMinutes)
+  const steps = [...new Set([...STEP_OPTIONS, busyMinutes])].sort((a, b) => a - b)
 
   // Ma'lumot yangilansa (saqlangandan keyin) — qatorlar saqlangan qiymatga qaytadi
   useEffect(() => {
@@ -93,6 +101,20 @@ export function ScheduleBoard({ sections, index, readOnly, metaOf }: { sections:
     })
   }
 
+  // O'yin kuni: tanlangan sana hamma o'yinlarga, vaqtlar birinchi o'yindan boshlab tanlangan oraliq bilan (admin buyrug'i bilan)
+  const fillDay = (section: ScheduleSection) => {
+    const date = roundDate[section.key]
+    setDrafts((s) => {
+      const next = { ...s }
+      section.matches.forEach((m, i) => {
+        const current = next[m.id] ?? original(m, fallbackVenue)
+        const time = dayStart ? addMinutesToTime(dayStart, i * dayStep) : null
+        next[m.id] = { ...current, date: date || current.date, time: time ?? current.time }
+      })
+      return next
+    })
+  }
+
   const save = useAdminMutation(async (rows: Match[]) => {
     for (const m of rows) {
       const d = draftOf(m)
@@ -105,6 +127,38 @@ export function ScheduleBoard({ sections, index, readOnly, metaOf }: { sections:
     <div>
       {sections.map((section) => (
         <div key={section.key}>
+          {section.day ? (
+            !readOnly && (
+              <div className="grid grid-cols-2 gap-2 border-b border-border bg-muted/60 px-4 py-3 sm:flex sm:flex-wrap sm:items-end sm:gap-3">
+                <label className="grid gap-1 text-xs font-semibold">
+                  O‘yin kuni
+                  <Input type="date" value={roundDate[section.key] ?? ""} onChange={(e) => setRoundDate((s) => ({ ...s, [section.key]: e.target.value }))} className="h-10 bg-card sm:w-40" />
+                </label>
+                <label className="grid gap-1 text-xs font-semibold">
+                  Birinchi o‘yin vaqti
+                  <Input type="time" step={300} value={dayStart} onChange={(e) => setDayStart(e.target.value)} className="h-10 bg-card sm:w-32" />
+                </label>
+                <div className="grid gap-1 text-xs font-semibold">
+                  <span id={`${section.key}-step`}>O‘yinlar oralig‘i</span>
+                  <Select value={String(dayStep)} onValueChange={(v) => setDayStep(Number(v))}>
+                    <SelectTrigger aria-labelledby={`${section.key}-step`} className="h-10 w-full bg-card sm:w-40">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {steps.map((n) => (
+                        <SelectItem key={n} value={String(n)}>
+                          har {durationLabel(n)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button type="button" variant="outline" className="h-10 self-end" onClick={() => fillDay(section)} disabled={!roundDate[section.key] && !dayStart}>
+                  Kun va vaqtlarni qo‘yish
+                </Button>
+              </div>
+            )
+          ) : (
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border bg-muted/60 px-4 py-2">
             <h3 className="text-sm font-semibold">
               {section.title}
@@ -125,6 +179,7 @@ export function ScheduleBoard({ sections, index, readOnly, metaOf }: { sections:
               </div>
             )}
           </div>
+          )}
           <ul className="divide-y divide-border">
             {section.matches.map((m) => {
               const d = draftOf(m)
@@ -132,7 +187,7 @@ export function ScheduleBoard({ sections, index, readOnly, metaOf }: { sections:
               const changed = isDirty(m)
               const confirmed = m.timeConfirmed !== false
               const when = d.date && d.time ? toLocalIso(d.date, d.time) : null
-              const venueBusy = when ? findVenueConflicts({ id: m.id, venueId: d.venue === NO_VENUE ? null : d.venue, kickoff: when }, planned) : []
+              const venueBusy = when ? findVenueConflicts({ id: m.id, venueId: d.venue === NO_VENUE ? null : d.venue, kickoff: when }, planned, busyMinutes) : []
               const teamBusy = when ? findScheduleConflicts({ id: m.id, homeId: m.homeId, awayId: m.awayId, kickoff: when }, planned) : []
               return (
                 <li key={m.id} className={cn("grid grid-cols-2 gap-2 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_9.5rem_7rem_minmax(0,13rem)] sm:items-center", !confirmed && !changed && "bg-gold-soft/30")}>
@@ -188,7 +243,7 @@ export function ScheduleBoard({ sections, index, readOnly, metaOf }: { sections:
                       <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
                       <span>
                         {venueBusy.length > 0 &&
-                          `Stadion shu vaqtda band: ${venueBusy.map((b) => `${sideName(b, "home", index)} — ${sideName(b, "away", index)}, ${formatTime(b.kickoff)}`).join("; ")}. Bir o‘yin maydonni taxminan 2 soat band qiladi. `}
+                          `Stadion shu vaqtda band: ${venueBusy.map((b) => `${sideName(b, "home", index)} — ${sideName(b, "away", index)}, ${formatTime(b.kickoff)}`).join("; ")}. Bir o‘yin maydonni taxminan ${durationLabel(busyMinutes)} band qiladi. `}
                         {teamBusy.length > 0 &&
                           `${[...new Set(teamBusy.map((c) => index.team(c.teamId)?.name))].join(", ")} shu kunga yaqin boshqa o‘yinda ham qatnashadi.`}
                       </span>
@@ -203,7 +258,7 @@ export function ScheduleBoard({ sections, index, readOnly, metaOf }: { sections:
 
       {!readOnly && (
         <div className="sticky bottom-16 z-10 flex flex-wrap items-center gap-3 border-t border-border bg-card/95 px-4 py-3 backdrop-blur lg:bottom-0">
-          <p className="min-w-0 flex-1 text-sm" aria-live="polite">
+          <p className="min-w-0 flex-1 basis-full text-sm sm:basis-auto" aria-live="polite">
             {dirty.length > 0 ? (
               <span className="font-semibold">{dirty.length} ta o‘yinning sanasi saqlanmagan</span>
             ) : (

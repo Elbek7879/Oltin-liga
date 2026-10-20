@@ -29,14 +29,14 @@ public class Season extends BaseEntity {
     public int pointsDraw = 1;
     public int pointsLoss = 0;
     /** Teng ochko mezonlari tartib bilan, vergul bilan ajratilgan */
-    public String tiebreakers = "H2H_POINTS,H2H_GOAL_DIFF,GOAL_DIFF,GOALS_FOR,FAIR_PLAY";
+    public String tiebreakers = "H2H_POINTS,H2H_GOAL_DIFF,H2H_GOALS,GOAL_DIFF,GOALS_FOR,FAIR_PLAY";
     public int legs = 1;
     public int qualifiersPerGroup = 2;
     /** Guruh hajmi bo'yicha chiqadiganlar: "4:2,5:3" — 4 jamoali guruhdan 2 ta, 5 jamoalidan 3 ta */
     public String qualifiersBySize = "3:2,4:2,5:3,6:3";
     public boolean thirdPlaceMatch = true;
     /** Bir bo'lim davomiyligi, daqiqa (jonli o'yin soati uchun) */
-    public int halfMinutes = 25;
+    public int halfMinutes = 20;
 
     public List<Tiebreaker> tiebreakerList() {
         if (tiebreakers == null || tiebreakers.isBlank()) return List.of();

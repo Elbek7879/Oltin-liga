@@ -4,6 +4,7 @@ import type { SeasonIndex } from "@/hooks/use-season-data"
 import { dateWords, formatDate, formatTime, slugify } from "./format"
 import { liveLabel } from "./live"
 import { scoreNote, sideName, stageLabel, totalScore, winnerSide } from "./match"
+import { toCyrillic } from "./translit"
 
 /**
  * Telegram kanali va ijtimoiy tarmoqlar uchun o'yin rasmi (1080×1350 PNG).
@@ -118,15 +119,41 @@ export function matchImageData(match: Match, index: SeasonIndex, host = typeof w
   }
 }
 
+/** Rasm ma'lumotlarini kirillchaga o'giradi (sayt kirill rejimida bo'lsa — rasm va post ham kirillcha); sayt domeni o'zgarmaydi */
+export function matchImageInCyrillic(d: MatchImageData): MatchImageData {
+  const c = (s: string | null) => (s === null ? null : toCyrillic(s))
+  const side = (x: MatchImageSide): MatchImageSide => ({
+    ...x,
+    name: toCyrillic(x.name),
+    team: x.team ? { ...x.team, shortName: toCyrillic(x.team.shortName) } : null,
+    scorers: x.scorers.map(toCyrillic),
+    reds: x.reds.map(toCyrillic),
+  })
+  return {
+    ...d,
+    badge: toCyrillic(d.badge),
+    season: toCyrillic(d.season),
+    stage: toCyrillic(d.stage),
+    home: side(d.home),
+    away: side(d.away),
+    note: c(d.note),
+    date: c(d.date),
+    when: d.when ? { ...d.when, weekday: toCyrillic(d.when.weekday), month: toCyrillic(d.when.month) } : null,
+    venue: c(d.venue),
+  }
+}
+
 /** Telegram posti uchun matn (rasm ostiga yoziladi) */
 export function matchCaption(d: MatchImageData) {
   const lines = [d.stage]
   if (d.score) lines.push(`${d.home.name} ${d.score.home}:${d.score.away} ${d.away.name}${d.note ? ` (${d.note.toLowerCase()})` : ""}`)
   else lines.push(`${d.home.name} — ${d.away.name}`)
   const goals = [...d.home.scorers.map((s) => `${s} (${d.home.name})`), ...d.away.scorers.map((s) => `${s} (${d.away.name})`)]
-  if (goals.length) lines.push(`Gollar: ${goals.join("; ")}`)
-  lines.push([d.date ?? "Sana tez orada e’lon qilinadi", d.time, d.venue].filter(Boolean).join(", "))
-  lines.push(d.site ? `Payariq Oltin Ligasi, ${d.site}` : "Payariq Oltin Ligasi")
+  if (goals.length) lines.push(`${/[\u0400-\u04FF]/.test(d.stage) ? "Голлар" : "Gollar"}: ${goals.join("; ")}`)
+  const soon = /[\u0400-\u04FF]/.test(d.stage) ? toCyrillic("Sana tez orada e’lon qilinadi") : "Sana tez orada e’lon qilinadi"
+  lines.push([d.date ?? soon, d.time, d.venue].filter(Boolean).join(", "))
+  const league = /[\u0400-\u04FF]/.test(d.stage) ? toCyrillic("Payariq Oltin Ligasi") : "Payariq Oltin Ligasi"
+  lines.push(d.site ? `${league}, ${d.site}` : league)
   return lines.join("\n")
 }
 
@@ -164,19 +191,19 @@ const C = {
   live: "#e5484d",
   red: "#d63b3b",
 }
-const FONT = `"Archivo Variable", "Archivo", system-ui, sans-serif`
-const SHIELD = "M20 1.5 37.5 7v15.2c0 11.4-7.4 18.4-17.5 22.3C9.9 40.6 2.5 33.6 2.5 22.2V7Z"
-const SHIELD_TOP = "M2.5 7 20 1.5 37.5 7v5.5H2.5Z"
+export const FONT = `"Archivo Variable", "Archivo", system-ui, sans-serif`
+export const SHIELD = "M20 1.5 37.5 7v15.2c0 11.4-7.4 18.4-17.5 22.3C9.9 40.6 2.5 33.6 2.5 22.2V7Z"
+export const SHIELD_TOP = "M2.5 7 20 1.5 37.5 7v5.5H2.5Z"
 
-type Ctx = CanvasRenderingContext2D
+export type Ctx = CanvasRenderingContext2D
 
-function setFont(ctx: Ctx, size: number, weight = 700, condensed = true) {
+export function setFont(ctx: Ctx, size: number, weight = 700, condensed = true) {
   ctx.font = `${weight} ${size}px ${FONT}`
   if ("fontStretch" in ctx) (ctx as Ctx & { fontStretch: string }).fontStretch = condensed ? "condensed" : "normal"
 }
 
 /** Matn kenglikka sig'maguncha shriftni kichraytiradi, kerak bo'lsa oxirini «…» bilan qisqartiradi */
-function fitText(ctx: Ctx, text: string, maxWidth: number, size: number, min: number, weight = 700, condensed = true) {
+export function fitText(ctx: Ctx, text: string, maxWidth: number, size: number, min: number, weight = 700, condensed = true) {
   let s = size
   setFont(ctx, s, weight, condensed)
   while (s > min && ctx.measureText(text).width > maxWidth) setFont(ctx, (s -= 2), weight, condensed)
@@ -186,7 +213,7 @@ function fitText(ctx: Ctx, text: string, maxWidth: number, size: number, min: nu
   return `${t.trimEnd()}…`
 }
 
-function loadImage(url: string): Promise<HTMLImageElement | null> {
+export function loadImage(url: string): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
     const img = new Image()
     try {
@@ -441,7 +468,7 @@ function scoreboard(ctx: Ctx, d: MatchImageData, cy: number) {
 }
 
 /** Futbol to'pi: markazda besh burchak, undan chetga chiziqlar */
-function ball(ctx: Ctx, cx: number, cy: number, r: number) {
+export function ball(ctx: Ctx, cx: number, cy: number, r: number) {
   ctx.save()
   ctx.fillStyle = C.white
   ctx.beginPath()

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { createSeed } from "@/api/mock/seed"
 import { checkDraw, groupSizes, randomDraw, seededRandom } from "../draw"
-import { findScheduleConflicts, findVenueConflicts, placeholderKickoff, primaryVenueId, roundRobin } from "../schedule"
+import { addMinutesToTime, canDeleteGroupMatch, durationLabel, findScheduleConflicts, findVenueConflicts, nextMatchQueue, placeholderKickoff, primaryVenueId, roundRobin, venueBusyMinutes } from "../schedule"
 import { goalsFromEvents } from "../validation"
 import type { Match } from "../types"
 
@@ -35,9 +35,16 @@ describe("roundRobin", () => {
 
 describe("stadion bandligi", () => {
   const busy = { id: "x", homeId: "A", awayId: "B", venueId: "arena", kickoff: "2026-05-02T16:00:00+05:00", status: "SCHEDULED" } as Match
-  it("2 soatdan kam farq bilan o‘sha stadionga o‘yin qo‘yilsa ogohlantiradi", () => {
-    expect(findVenueConflicts({ id: "new", venueId: "arena", kickoff: "2026-05-02T17:00:00+05:00" }, [busy])).toEqual([busy])
-    expect(findVenueConflicts({ id: "new", venueId: "arena", kickoff: "2026-05-02T18:00:00+05:00" }, [busy])).toEqual([])
+  it("o‘yin davomiyligidan kam farq bilan o‘sha stadionga o‘yin qo‘yilsa ogohlantiradi (2×20 — 1 soat)", () => {
+    expect(venueBusyMinutes()).toBe(60)
+    expect(venueBusyMinutes(25)).toBe(70)
+    expect(durationLabel(60)).toBe("1 soat")
+    expect(durationLabel(70)).toBe("1 soat 10 daqiqa")
+    // 2×20: soatma-soat 4–5 ta o'yin to'qnashmaydi
+    expect(findVenueConflicts({ id: "new", venueId: "arena", kickoff: "2026-05-02T16:50:00+05:00" }, [busy])).toEqual([busy])
+    expect(findVenueConflicts({ id: "new", venueId: "arena", kickoff: "2026-05-02T17:00:00+05:00" }, [busy])).toEqual([])
+    // Uzunroq o'yin (2×45) — 2 soat
+    expect(findVenueConflicts({ id: "new", venueId: "arena", kickoff: "2026-05-02T17:00:00+05:00" }, [busy], venueBusyMinutes(45))).toEqual([busy])
     expect(findVenueConflicts({ id: "new", venueId: "boshqa", kickoff: "2026-05-02T16:00:00+05:00" }, [busy])).toEqual([])
     expect(findVenueConflicts({ id: "x", venueId: "arena", kickoff: "2026-05-02T16:00:00+05:00" }, [busy])).toEqual([])
     expect(findVenueConflicts({ id: "new", venueId: "arena", kickoff: "2026-05-02T16:00:00+05:00" }, [{ ...busy, status: "POSTPONED" }])).toEqual([])
@@ -104,5 +111,65 @@ describe("namunaviy ma’lumotlar", () => {
     const champion = db.awards.find((a) => a.seasonId === "s2025" && a.type === "CHAMPION")!
     expect(final.decidedBy).toBe("PENALTIES")
     expect(champion.seasonTeamId).toBe(final.winnerId)
+  })
+})
+
+describe("navbatdagi o‘yinlar (kuniga 4–5 o‘yin)", () => {
+  /** Guruhlar bo'yicha sanasiz juftliklar — qur'adan keyingi holat */
+  function fixtures(groups: Record<string, string[]>) {
+    const list: Match[] = []
+    for (const [groupId, teams] of Object.entries(groups)) {
+      for (const p of roundRobin(teams)) {
+        list.push({ id: `${groupId}-${p.round}-${p.homeId}`, stage: "GROUP", groupId, round: p.round, homeId: p.homeId, awayId: p.awayId, status: "SCHEDULED", timeConfirmed: false, kickoff: "2026-11-01T12:00:00+05:00" } as Match)
+      }
+    }
+    return list
+  }
+  const teamsOf = (ms: Match[]) => ms.flatMap((m) => [m.homeId, m.awayId])
+
+  it("turlar tartibida, tur ichida guruhlar tartibida; bir kunda jamoa takrorlanmaydi", () => {
+    const all = fixtures({ A: ["a1", "a2", "a3", "a4"], B: ["b1", "b2", "b3", "b4"], C: ["c1", "c2", "c3", "c4"] })
+    const day = nextMatchQueue(all, ["A", "B", "C"], 5)
+    expect(day.map((m) => `${m.groupId}${m.round}`)).toEqual(["A1", "A1", "B1", "B1", "C1"])
+    expect(new Set(teamsOf(day)).size).toBe(10)
+  })
+
+  it("bitta 4 jamoali guruhda kuniga faqat 2 ta o‘yin chiqadi — hech kim kuniga ikki marta o‘ynamaydi", () => {
+    const all = fixtures({ A: ["a1", "a2", "a3", "a4"] })
+    const day1 = nextMatchQueue(all, ["A"], 5)
+    expect(day1.map((m) => m.round)).toEqual([1, 1])
+    // Birinchi kun saqlandi — navbatga 2-tur chiqadi
+    const after = all.map((m) => (day1.includes(m) ? { ...m, timeConfirmed: true } : m))
+    expect(nextMatchQueue(after, ["A"], 5).map((m) => m.round)).toEqual([2, 2])
+  })
+
+  it("navbatda qolgan o‘yin jamoasining keyingi tur o‘yini undan oldin chiqmaydi", () => {
+    // 1-turning ikkinchi o'yini qoldirildi (sanasiz), 2-tur ham sanasiz: o'sha jamoalar 2-turga o'tib ketmaydi
+    const all = fixtures({ A: ["a1", "a2", "a3", "a4"] })
+    const firstDone = all.map((m, i) => (i === 0 ? { ...m, timeConfirmed: true, status: "FINISHED" as const } : m))
+    const day = nextMatchQueue(firstDone, ["A"], 5)
+    expect(day).toHaveLength(1)
+    expect(day[0].round).toBe(1)
+  })
+
+  it("sanasi belgilangan, yakunlangan va bekor qilingan o‘yinlar navbatga kirmaydi; vaqtlar oralig‘i hisoblanadi", () => {
+    const all = fixtures({ A: ["a1", "a2", "a3", "a4"] }).map((m, i) => (i < 2 ? { ...m, timeConfirmed: true } : i === 2 ? { ...m, status: "CANCELLED" as const } : m))
+    expect(nextMatchQueue(all, ["A"], 5).every((m) => m.timeConfirmed === false && m.status === "SCHEDULED")).toBe(true)
+    expect(addMinutesToTime("15:00", 60)).toBe("16:00")
+    expect(addMinutesToTime("15:30", 4 * 60)).toBe("19:30")
+    expect(addMinutesToTime("23:30", 60)).toBeNull()
+  })
+})
+
+describe("guruh o‘yinini o‘chirish (davra tizimi buzilmasin)", () => {
+  const base = { stage: "GROUP", groupId: "A", homeId: "a1", awayId: "a2", status: "SCHEDULED", timeConfirmed: true, kickoff: "2026-11-01T12:00:00+05:00" }
+  it("juftlikning yagona o‘yini o‘chirilmaydi, qo‘lda qo‘shilgan ortiqchasi o‘chiriladi", () => {
+    const only = { ...base, id: "m1" } as Match
+    expect(canDeleteGroupMatch(only, [only], 1)).toBe(false)
+    const extra = { ...base, id: "m2", homeId: "a2", awayId: "a1" } as Match
+    expect(canDeleteGroupMatch(extra, [only, extra], 1)).toBe(true)
+    // Ikki davrali turnirda ikkala o'yin ham kerak
+    expect(canDeleteGroupMatch(extra, [only, extra], 2)).toBe(false)
+    expect(canDeleteGroupMatch({ ...only, status: "FINISHED" } as Match, [only, extra], 1)).toBe(false)
   })
 })

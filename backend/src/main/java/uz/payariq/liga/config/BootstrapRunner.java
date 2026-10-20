@@ -55,6 +55,40 @@ public class BootstrapRunner implements ApplicationRunner {
         this.adminDisplayName = adminDisplayName;
     }
 
+    /** «Liga haqida» matni: ## — sarlavha, - — ro'yxat, **...** — qalin (saytda bo'limlar bilan ko'rsatiladi) */
+    static final String DEFAULT_ABOUT = """
+**Oltin Liga** — Samarqand viloyati Payariq tumanida tashkil topgan, qishloq va mahallalar o‘rtasidagi havaskorlar mini-futbol chempionati. Unda Payariq va boshqa tumanlardan kelgan qishloq va mahalla terma jamoalari ishtirok etadi. Maqsadimiz — yoshlarni sportga jalb qilish, qishloq va mahallalar o‘rtasida do‘stona raqobat va futbol bayramini yaratish.
+
+## Qayerda va qachon o‘tadi?
+- Barcha o‘yinlar **Mirzacho‘l Birlik Arena** stadionida o‘tadi.
+- O‘yin kunlari odatda 4–5 ta o‘yin bo‘ladi, har bir o‘yin 2 × 20 daqiqa.
+- O‘yinlarning kuni va vaqti saytdagi «O‘yinlar» bo‘limida e’lon qilinadi.
+
+## Kimlar qatnashadi?
+- Payariq va boshqa tumanlarning qishloq va mahalla terma jamoalari.
+- Futbolchilar **16 yoshdan katta** bo‘lishi kerak.
+
+## Qanday qatnashiladi?
+1. Jamoa sardori tashkilotchilarga murojaat qilib, jamoa ro‘yxatini topshiradi: telefon +998 95 441 92 92 yoki Telegram @Sanjar12ab.
+2. Mavsum boshida **qur’a** tashlanadi: jamoalar guruhlarga bo‘linadi. Har jamoa guruhdagi raqiblarining har biri bilan bir martadan o‘ynaydi.
+3. G‘alaba uchun **3 ochko**, durang uchun **1 ochko** beriladi.
+4. Har guruhdan eng yaxshi ikki jamoa (5–6 jamoali guruhlardan uchta) **pley-off**ga chiqadi.
+5. Pley-offda yutqazgan jamoa musobaqadan chiqadi. **Final** g‘olibi — mavsum chempioni.
+
+## Adolatli va shaffof: hammasini sayt o‘zi hisoblaydi
+- **Qur’ani sayt tashlaydi** — jamoalar guruhlarga kompyuter tomonidan tasodifiy taqsimlanadi.
+- **Juftliklar** — kim kim bilan o‘ynashi — qur’adan keyin avtomatik tuziladi.
+- **Turnir jadvali, ochkolar, o‘rinlar va to‘purarlar ro‘yxati** har bir natijadan keyin avtomatik hisoblanadi.
+- **Ochko teng bo‘lsa**, o‘rinlar nizomdagi mezonlar bo‘yicha avtomatik aniqlanadi: avval o‘zaro o‘yin, keyin to‘plar farqi va gollar. Hammasi teng bo‘lsa, qur’ani ham sayt tashlaydi.
+- **Pley-off setkasi** guruh bosqichi tugashi bilan o‘zi tuziladi — kim kim bilan o‘ynashini jadval hal qiladi.
+- **Tashkilotchilar faqat** o‘yin sanasi va vaqtini hamda natijani (hisob va gol mualliflari) kiritadi. Saytdagi har bir o‘zgarish tizimda qayd etib boriladi.
+
+## Muxlislar uchun
+- Natijalar, jadval, to‘purarlar va pley-off setkasi saytda darhol yangilanadi. O‘yin paytida gollar jonli ko‘rinadi.
+- **«Mening jamoam»** orqali o‘z jamoangizni tanlab, uning o‘yinlarini kuzatib borasiz.
+- Sayt kirill yozuvida ham ishlaydi — tepadagi «Кирилл» tugmasini bosing.
+""".strip();
+
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
@@ -63,8 +97,13 @@ public class BootstrapRunner implements ApplicationRunner {
             s.name = "Payariq Oltin Ligasi";
             s.shortName = "Oltin Liga";
             s.region = "Payariq tumani, Samarqand viloyati";
-            s.about = "Payariq Oltin Ligasi — tuman qishloqlari jamoalari ishtirokidagi havaskorlar futbol musobaqasi. "
-                    + "Barcha o‘yinlar " + MAIN_VENUE + " stadionida o‘tadi.";
+            // Tashkilotchilar tasdiqlagan matn va aloqa (keyin «Sozlamalar → Liga ma'lumotlari»da o'zgartiriladi)
+            s.about = DEFAULT_ABOUT;
+            s.contactPhone = "+998 95 441 92 92";
+            s.telegram = "@Sanjar12ab";
+            s.telegramChannel = "https://t.me/Oltinliga12";
+            s.instagram = "https://www.instagram.com/oltin.liga12/";
+            s.youtube = "https://www.youtube.com/@Sanjar192";
             settings.save(s);
             // Faqat birinchi o'rnatishda: keyin tashkilotchi maydonni o'chirsa, qayta yaratilmaydi
             if (venues.count() == 0) {

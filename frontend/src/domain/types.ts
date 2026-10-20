@@ -84,6 +84,28 @@ export interface Player {
   position: Position | null
   /** Maxfiy: ommaviy saytda hech qachon ko'rsatilmaydi */
   phone?: string
+  /** Futbolchi rasmi (ramziy jamoa va futbolchi sahifasi); bo'lmasa odamcha belgisi */
+  photoUrl?: string | null
+}
+
+/** Ramziy jamoadagi o'rin: darvozabon, himoyachi, chap va o'ng yarim himoyachi, hujumchi */
+export type RoundTeamSlotKey = "GK" | "DF" | "MF_L" | "MF_R" | "FW"
+
+export interface RoundTeamSlot {
+  slot: RoundTeamSlotKey
+  playerId: ID
+  seasonTeamId: ID
+}
+
+/** Ramziy jamoa: guruh bosqichida round, pley-offda playoffRound */
+export interface RoundTeam {
+  id: ID
+  stage: MatchStage
+  round: number | null
+  playoffRound: PlayoffRoundKey | null
+  published: boolean
+  publishedAt: string | null
+  slots: RoundTeamSlot[]
 }
 
 export interface RosterEntry {
@@ -235,4 +257,8 @@ export interface LeagueSettings {
   about: string
   contactPhone: string
   telegram: string
+  /** Ijtimoiy tarmoqlar — to'liq havola, bo'sh bo'lsa ko'rsatilmaydi */
+  telegramChannel?: string
+  instagram?: string
+  youtube?: string
 }

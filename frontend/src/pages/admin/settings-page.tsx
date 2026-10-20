@@ -19,6 +19,7 @@ import { useSeason } from "@/hooks/use-season"
 import { useSeasonData } from "@/hooks/use-season-data"
 import { formatDateTime } from "@/lib/format"
 import { isSuperAdmin } from "@/lib/roles"
+import { DEFAULT_HALF_MINUTES } from "@/domain/schedule"
 
 /** superOnly — faqat bosh tashkilotchiga (server ham shunday tekshiradi) */
 const TABS = [
@@ -79,7 +80,7 @@ function RulesTab() {
             </Select>
           </Field>
           <Field label="Bir bo‘lim davomiyligi" htmlFor="half" hint="Telegram botdagi jonli o‘yin soati shunga qarab daqiqani hisoblaydi">
-            <Select value={String(rules.halfMinutes ?? 25)} onValueChange={(v) => setRules({ ...rules, halfMinutes: Number(v) })}>
+            <Select value={String(rules.halfMinutes ?? DEFAULT_HALF_MINUTES)} onValueChange={(v) => setRules({ ...rules, halfMinutes: Number(v) })}>
               <SelectTrigger id="half" className="w-full"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {[15, 20, 25, 30, 35, 40, 45].map((n) => (
@@ -263,12 +264,27 @@ function LeagueTab() {
         <Field label="Aloqa telefoni" htmlFor="l-phone" hint="Saytda «Liga haqida» sahifasida ko‘rinadi">
           <Input id="l-phone" type="tel" value={form.contactPhone} onChange={(e) => set("contactPhone", e.target.value)} placeholder="+998" />
         </Field>
-        <Field label="Telegram" htmlFor="l-tg" hint="Masalan, @kanal_nomi">
+        <Field label="Telegram (murojaat uchun)" htmlFor="l-tg" hint="Tashkilotchi profili, masalan, @Sanjar12ab">
           <Input id="l-tg" value={form.telegram} onChange={(e) => set("telegram", e.target.value)} />
         </Field>
       </div>
-      <Field label="Liga haqida" htmlFor="l-about">
-        <Textarea id="l-about" rows={5} value={form.about} onChange={(e) => set("about", e.target.value)} />
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Field label="Telegram kanal" htmlFor="l-tg-channel" hint="Saytda logotip bilan ko‘rinadi">
+          <Input id="l-tg-channel" value={form.telegramChannel ?? ""} onChange={(e) => set("telegramChannel", e.target.value)} placeholder="t.me/kanal_nomi" />
+        </Field>
+        <Field label="Instagram" htmlFor="l-instagram" hint="Saytda logotip bilan ko‘rinadi">
+          <Input id="l-instagram" value={form.instagram ?? ""} onChange={(e) => set("instagram", e.target.value)} placeholder="instagram.com/sahifa" />
+        </Field>
+        <Field label="YouTube" htmlFor="l-youtube" hint="Saytda logotip bilan ko‘rinadi">
+          <Input id="l-youtube" value={form.youtube ?? ""} onChange={(e) => set("youtube", e.target.value)} placeholder="youtube.com/@kanal" />
+        </Field>
+      </div>
+      <Field
+        label="Liga haqida"
+        htmlFor="l-about"
+        hint="Saytda «Liga haqida» sahifasida, birinchi xatboshi esa bosh sahifada ko‘rinadi. «## » bilan boshlangan qator — sarlavha, «- » — ro‘yxat, «1. » — raqamli ro‘yxat, **so‘z** — qalin, bo‘sh qator — yangi xatboshi."
+      >
+        <Textarea id="l-about" rows={14} maxLength={4000} value={form.about} onChange={(e) => set("about", e.target.value)} />
       </Field>
       <Button onClick={() => runAction(() => mutation.mutateAsync(form), "Liga ma’lumotlari saqlandi")} disabled={mutation.isPending}>
         <Save aria-hidden="true" />

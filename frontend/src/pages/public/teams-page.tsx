@@ -5,6 +5,7 @@ import { EmptyState, ErrorState, PageHeader, PageSkeleton } from "@/components/l
 import { TeamCrest } from "@/components/league/team-crest"
 import { Input } from "@/components/ui/input"
 import { useSeasonData } from "@/hooks/use-season-data"
+import { searchKey } from "@/lib/translit"
 
 export default function TeamsPage() {
   const { index, isLoading, error, refetch } = useSeasonData()
@@ -12,8 +13,8 @@ export default function TeamsPage() {
 
   const teams = useMemo(() => {
     if (!index) return []
-    const q = query.trim().toLowerCase()
-    return index.bundle.teams.filter((t) => !q || t.name.toLowerCase().includes(q) || t.village.toLowerCase().includes(q))
+    const q = searchKey(query)
+    return index.bundle.teams.filter((t) => !q || searchKey(t.name).includes(q) || searchKey(t.village).includes(q))
   }, [index, query])
 
   if (isLoading && !index) return <PageSkeleton />

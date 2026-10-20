@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import type { Position } from "@/domain/types"
 import { useSeasonData } from "@/hooks/use-season-data"
 import { POSITION_LABEL } from "@/lib/format"
+import { searchKey } from "@/lib/translit"
 
 const PAGE = 40
 
@@ -21,7 +22,7 @@ export default function PlayersPage() {
 
   const rows = useMemo(() => {
     if (!index) return []
-    const q = query.trim().toLowerCase()
+    const q = searchKey(query)
     return index.bundle.rosters
       .map((r) => {
         const p = index.player(r.playerId)!
@@ -30,7 +31,7 @@ export default function PlayersPage() {
       })
       .filter(({ r }) => team === "all" || r.seasonTeamId === team)
       .filter(({ p }) => position === "all" || p.position === position)
-      .filter(({ p }) => !q || `${p.firstName} ${p.lastName}`.toLowerCase().includes(q))
+      .filter(({ p }) => !q || searchKey(`${p.firstName} ${p.lastName}`).includes(q))
       .sort((a, b) => (b.s?.goals ?? 0) - (a.s?.goals ?? 0) || a.p.lastName.localeCompare(b.p.lastName, "uz"))
   }, [index, query, team, position])
 

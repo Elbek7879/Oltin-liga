@@ -85,10 +85,13 @@ public class PublicReadService {
     private final NewsRepository news;
     private final SponsorRepository sponsors;
     private final LeagueSettingsRepository settings;
+    private final uz.payariq.liga.repo.RoundTeamRepository roundTeams;
 
     public PublicReadService(SeasonDataLoader loader, SeasonRepository seasons, TeamRepository teams, SeasonTeamRepository seasonTeams,
                              PlayerRepository players, RosterEntryRepository rosters, MatchRepository matches, SeasonAwardRepository awards,
-                             VenueRepository venues, NewsRepository news, SponsorRepository sponsors, LeagueSettingsRepository settings) {
+                             VenueRepository venues, NewsRepository news, SponsorRepository sponsors, LeagueSettingsRepository settings,
+                             uz.payariq.liga.repo.RoundTeamRepository roundTeams) {
+        this.roundTeams = roundTeams;
         this.loader = loader;
         this.seasons = seasons;
         this.teams = teams;
@@ -130,7 +133,8 @@ public class PublicReadService {
                 d.discipline(),
                 d.awards().stream().map(AwardDto::of).toList(),
                 d.adjustments().stream().map(AdjustmentDto::of).toList(),
-                d.lots().stream().map(LotDto::of).toList());
+                d.lots().stream().map(LotDto::of).toList(),
+                roundTeams.findBySeasonIdAndPublishedTrueOrderByPublishedAtAsc(seasonId).stream().map(uz.payariq.liga.web.Dto.RoundTeamDto::of).toList());
     }
 
     // ---------- Arxiv ----------

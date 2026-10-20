@@ -146,6 +146,8 @@ public class BotUpdateHandler {
             sendToday(chatId, msgId, null);
             return;
         }
+        // Botning o'zi bunday tugma yaratmaydi — eski yoki buzilgan ma'lumot
+        if (p.length < 2) throw ApiException.badRequest("Bu tugma eskirgan. Panelni yangilang.");
         Match m = live.match(dec(p[1]));
         // Ochish va yangilash — holatni tekshirmaydi
         if (op.equals("o") || op.equals("r")) {

@@ -40,21 +40,41 @@ export function EmptyState({
   description,
   action,
   className,
+  pageTitle = false,
 }: {
   icon: LucideIcon
   title: string
   description?: string
   action?: ReactNode
   className?: string
+  /** Butun sahifa o'rnida chiqsa — sarlavha h1 bo'ladi (ekran o'quvchilar va qidiruv tizimlari uchun) */
+  pageTitle?: boolean
 }) {
+  const Title = pageTitle ? "h1" : "p"
   return (
     <div className={cn("flex flex-col items-center px-6 py-10 text-center", className)}>
       <span className="mb-3 flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground">
         <Icon className="size-5" aria-hidden="true" />
       </span>
-      <p className="font-semibold">{title}</p>
+      <Title className="font-semibold">{title}</Title>
       {description && <p className="mt-1 max-w-sm text-sm text-muted-foreground">{description}</p>}
       {action && <div className="mt-4">{action}</div>}
+    </div>
+  )
+}
+
+/** Yozuv topilmadi (havola eskirgan yoki o'chirilgan): sahifa sarlavhasi va ro'yxatga qaytish havolasi bilan */
+export function NotFoundState({ icon: Icon, title, description, backTo, backLabel }: { icon: LucideIcon; title: string; description: string; backTo: string; backLabel: string }) {
+  return (
+    <div className="container-page flex min-h-[45dvh] flex-col items-center justify-center py-12 text-center">
+      <span className="mb-3 flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground">
+        <Icon className="size-5" aria-hidden="true" />
+      </span>
+      <h1 className="font-display text-2xl">{title}</h1>
+      <p className="mt-2 max-w-md text-muted-foreground">{description}</p>
+      <Button asChild variant="outline" className="mt-5">
+        <Link to={backTo}>{backLabel}</Link>
+      </Button>
     </div>
   )
 }

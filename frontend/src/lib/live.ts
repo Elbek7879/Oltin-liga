@@ -1,6 +1,7 @@
+import { DEFAULT_HALF_MINUTES } from "@/domain/schedule"
 import type { Match } from "@/domain/types"
 
-export const DEFAULT_HALF_MINUTES = 25
+export { DEFAULT_HALF_MINUTES }
 const MAX_MINUTE = 130
 
 /**

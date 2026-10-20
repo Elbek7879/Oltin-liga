@@ -4,16 +4,19 @@ import { createRoot } from "react-dom/client"
 import { RouterProvider } from "react-router/dom"
 import { newsQuery } from "@/api/hooks"
 import { onUnauthorized } from "@/api/http/httpApi"
+import { isNotFound } from "@/api/types"
 import { router } from "@/app/router"
 import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { initScript } from "@/hooks/use-script"
 import { SeasonProvider } from "@/hooks/use-season"
 import { ThemeProvider } from "@/hooks/use-theme"
 import "./styles/globals.css"
 
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { staleTime: 30_000, retry: 1, refetchOnWindowFocus: true },
+    // «Topilmadi» javobi qayta so'ralmaydi — eski havola darhol tushunarli xabar bilan ochiladi
+    queries: { staleTime: 30_000, retry: (count, error) => !isNotFound(error) && count < 1, refetchOnWindowFocus: true },
   },
 })
 
@@ -22,6 +25,9 @@ onUnauthorized(() => queryClient.setQueryData(["me"], null))
 
 // Bosh sahifada eng katta element — yangiliklar: ular sahifa kodi bilan parallel so'raladi
 if (window.location.pathname === "/") void queryClient.prefetchQuery(newsQuery())
+
+// Kirill yozuvi tanlangan bo'lsa — birinchi chizishdan oldin yoqiladi (lotincha miltillab ko'rinmasin)
+initScript()
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

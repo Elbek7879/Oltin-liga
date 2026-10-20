@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod"
-import { ChevronDown, Pencil, Plus, Search, Shield, Trash, UsersRound } from "lucide-react"
+import { ChevronDown, Lock, Pencil, Plus, Search, Shield, Trash, UsersRound } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
 import { Link, useSearchParams } from "react-router"
@@ -17,8 +17,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { useSeason } from "@/hooks/use-season"
+import { useSeasonData } from "@/hooks/use-season-data"
+import { SEASON_STATUS_LABEL } from "@/lib/format"
 import { checkDrafts, emptyDraft, toRowInputs, type PlayerDraft } from "@/lib/player-list"
 import { cn } from "@/lib/utils"
+import { searchKey } from "@/lib/translit"
 
 const schema = z.object({
   name: z.string().trim().min(2, "Jamoa nomini kiriting (kamida 2 ta harf)").max(40, "Nom juda uzun"),
@@ -37,9 +40,16 @@ const schema = z.object({
 })
 type Values = z.infer<typeof schema>
 
-function TeamFormDialog({ open, onOpenChange, team }: { open: boolean; onOpenChange: (v: boolean) => void; team: AdminTeamRow | null }) {
+/** «2-mavsum» (2026, tayyorlanmoqda) — bir yilda ikki mavsum bo'lsa ham qaysi biri ekani aniq */
+function seasonTitle(season: { name: string; year: number; status: keyof typeof SEASON_STATUS_LABEL } | undefined) {
+  return season ? `«${season.name}» (${season.year}, ${SEASON_STATUS_LABEL[season.status].toLowerCase()})` : ""
+}
+
+function TeamFormDialog({ open, onOpenChange, team, locked }: { open: boolean; onOpenChange: (v: boolean) => void; team: AdminTeamRow | null; locked: boolean }) {
   const { seasonId, season } = useSeason()
-  const [addToSeason, setAddToSeason] = useState(true)
+  const [addToSeasonChoice, setAddToSeason] = useState(true)
+  // Qur'a tashlangan mavsumga jamoa qo'shilmaydi — faqat umumiy ro'yxatga (keyingi mavsum uchun) saqlanadi
+  const addToSeason = addToSeasonChoice && !locked
   const [playersOpen, setPlayersOpen] = useState(false)
   const [players, setPlayers] = useState<PlayerDraft[]>([])
   const playerCheck = checkDrafts(players)
@@ -134,11 +144,17 @@ function TeamFormDialog({ open, onOpenChange, team }: { open: boolean; onOpenCha
           <Field label="Tashkil topgan yili" htmlFor="t-founded" error={errors.founded?.message}>
             <Input id="t-founded" inputMode="numeric" placeholder="2010" maxLength={4} {...form.register("founded")} />
           </Field>
-          {!team && season?.status !== "FINISHED" && (
+          {!team && season?.status !== "FINISHED" && !locked && (
             <label className="flex min-h-11 cursor-pointer items-center gap-3 self-end text-sm">
               <Switch checked={addToSeason} onCheckedChange={setAddToSeason} />
-              {season?.year}-yil mavsumiga qo‘shish
+              <span>{seasonTitle(season)} mavsumiga qo‘shish</span>
             </label>
+          )}
+          {!team && locked && (
+            <p className="flex items-start gap-2 self-end text-sm text-muted-foreground sm:col-span-2">
+              <Lock className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+              {seasonTitle(season)} mavsumida qur’a tashlangan — jamoa bu mavsumga qo‘shilmaydi, faqat ro‘yxatga saqlanadi (keyingi mavsumda qo‘shasiz).
+            </p>
           )}
           {canAddPlayers && (
             <div className="rounded-xl border border-border p-3 sm:col-span-2">
@@ -189,6 +205,9 @@ function TeamFormDialog({ open, onOpenChange, team }: { open: boolean; onOpenCha
 
 export default function AdminTeamsPage() {
   const { seasonId, season } = useSeason()
+  const { index } = useSeasonData()
+  // Qur'a tashlangach mavsum ishtirokchilari qulflanadi (server ham shuni tekshiradi)
+  const locked = Boolean(index && index.bundle.season.id === seasonId && index.bundle.groups.length > 0)
   const { data, isLoading, error, refetch } = useAdminTeams(seasonId)
   const readOnly = useReadOnly()
   const [params, setParams] = useSearchParams()
@@ -199,8 +218,8 @@ export default function AdminTeamsPage() {
   const remove = useAdminMutation((teamId: string) => api.deleteTeam(teamId))
 
   const rows = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    return (data ?? []).filter((t) => !q || t.name.toLowerCase().includes(q) || t.village.toLowerCase().includes(q))
+    const q = searchKey(query)
+    return (data ?? []).filter((t) => !q || searchKey(t.name).includes(q) || searchKey(t.village).includes(q))
   }, [data, query])
   const inSeason = data?.filter((t) => t.inSeason).length ?? 0
 
@@ -208,9 +227,9 @@ export default function AdminTeamsPage() {
     <div className="mx-auto max-w-5xl">
       <AdminPageHeader
         title="Jamoalar"
-        description={`Jamoalar soni cheklanmagan. ${season?.year}-yil mavsumida ${inSeason} ta jamoa ishtirok etmoqda.`}
+        description={`Jamoalar soni cheklanmagan. ${seasonTitle(season)} mavsumida ${inSeason} ta jamoa ishtirok etmoqda.`}
         actions={
-          !readOnly && (
+          !readOnly && !locked && (
             <Button onClick={() => { setEditing(null); setOpen(true) }}>
               <Plus aria-hidden="true" />
               Jamoa qo‘shish
@@ -219,6 +238,19 @@ export default function AdminTeamsPage() {
         }
       />
       <ReadOnlyBanner />
+      {locked && !readOnly && (
+        <p className="mb-4 flex items-start gap-2 rounded-xl border border-border bg-muted px-4 py-3 text-sm">
+          <Lock className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <span>
+            <span className="font-semibold">Qur’a tashlangan — guruhlar shakllangan.</span> Bu mavsumga yangi jamoa qo‘shib yoki jamoani chiqarib bo‘lmaydi.
+            Jamoa nomi, logotipi va futbolchilarini tahrirlash mumkin. Jamoa esdan chiqqan bo‘lsa va hali natija kiritilmagan bo‘lsa,{" "}
+            <Link to="/admin/guruhlar" className="font-semibold underline underline-offset-2">
+              «Guruhlar»
+            </Link>{" "}
+            bo‘limida qur’ani bekor qiling.
+          </span>
+        </p>
+      )}
       <div className="relative mb-4 md:w-72">
         <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
         <Input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Jamoa yoki qishloq" aria-label="Jamoalarni qidirish" className="pl-9" />
@@ -245,11 +277,11 @@ export default function AdminTeamsPage() {
                 <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm">
                   <Switch
                     checked={t.inSeason}
-                    disabled={readOnly || toggle.isPending}
+                    disabled={readOnly || locked || toggle.isPending}
                     onCheckedChange={(v) =>
                       runAction(() => toggle.mutateAsync({ teamId: t.id, inSeason: v }), v ? `«${t.name}» mavsumga qo‘shildi` : `«${t.name}» mavsumdan chiqarildi`)
                     }
-                    aria-label={`${t.name}: ${season?.year}-yil mavsumida ishtirok`}
+                    aria-label={`${t.name}: ${seasonTitle(season)} mavsumida ishtirok${locked ? " (qur’a tashlangan, o‘zgartirib bo‘lmaydi)" : ""}`}
                   />
                   <span className="hidden sm:inline">Mavsumda</span>
                 </label>
@@ -287,6 +319,7 @@ export default function AdminTeamsPage() {
           if (!v && params.get("yangi")) setParams({}, { replace: true })
         }}
         team={editing}
+        locked={locked}
       />
     </div>
   )

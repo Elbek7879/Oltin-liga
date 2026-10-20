@@ -183,6 +183,9 @@ public class ContentService {
         s.about = in.about() == null ? "" : in.about().trim();
         s.contactPhone = in.contactPhone() == null ? "" : in.contactPhone().trim();
         s.telegram = in.telegram() == null || in.telegram().isBlank() ? "" : (in.telegram().startsWith("@") ? in.telegram().trim() : "@" + in.telegram().trim());
+        s.telegramChannel = SocialLinks.telegram(in.telegramChannel());
+        s.instagram = SocialLinks.instagram(in.instagram());
+        s.youtube = SocialLinks.youtube(in.youtube());
         settings.save(s);
         audit.record("Sozlamalar", "Liga ma’lumotlari yangilandi", "SETTINGS", s.getId());
         return SettingsDto.of(s);

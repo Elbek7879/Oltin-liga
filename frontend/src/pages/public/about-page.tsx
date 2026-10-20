@@ -1,6 +1,9 @@
-import { BookOpen, Phone, Send } from "lucide-react"
+import { BookOpen } from "lucide-react"
 import { Link } from "react-router"
 import { useSettings } from "@/api/hooks"
+import { LeagueContacts } from "@/components/league/league-contacts"
+import { RichText } from "@/components/league/rich-text"
+import { socialLinks, SocialLinks } from "@/components/league/social-links"
 import { PageHeader, PageSkeleton } from "@/components/league/states"
 import { LeagueMark } from "@/components/layout/brand"
 import { qualifiersFor } from "@/domain/playoff"
@@ -18,9 +21,9 @@ export default function AboutPage() {
       <PageHeader title="Liga haqida" description={settings.region} />
       <div className="grid gap-5 lg:grid-cols-12">
         <div className="space-y-5 lg:col-span-8">
-          <section className="panel flex flex-col items-center gap-5 p-4 text-center sm:flex-row sm:items-start sm:text-left md:p-6">
-            <LeagueMark size="lg" label="Payariq Oltin Ligasi logotipi" className="size-28 md:size-32" />
-            <p className="max-w-[70ch] text-base leading-7 md:text-lg md:leading-8">{settings.about}</p>
+          <section className="panel p-4 md:p-6">
+            <LeagueMark size="lg" label="Payariq Oltin Ligasi logotipi" className="mx-auto mb-4 size-24 sm:float-right sm:mb-2 sm:ml-5 md:size-28" />
+            <RichText text={settings.about} className="max-w-[70ch]" />
           </section>
           {rules && (
             <section className="panel p-4 md:p-6" aria-labelledby="rules-title">
@@ -59,31 +62,18 @@ export default function AboutPage() {
             Aloqa
           </h2>
           {settings.contactPhone || settings.telegram ? (
-            <ul className="space-y-2 text-sm md:text-base">
-              {settings.contactPhone && (
-                <li>
-                  <a href={`tel:${settings.contactPhone.replace(/\s/g, "")}`} className="inline-flex min-h-10 items-center gap-2 font-semibold hover:underline">
-                    <Phone className="size-4" aria-hidden="true" />
-                    {settings.contactPhone}
-                  </a>
-                </li>
-              )}
-              {settings.telegram && (
-                <li>
-                  <a
-                    href={`https://t.me/${settings.telegram.replace(/^@/, "")}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex min-h-10 items-center gap-2 font-semibold hover:underline"
-                  >
-                    <Send className="size-4" aria-hidden="true" />
-                    {settings.telegram}
-                  </a>
-                </li>
-              )}
-            </ul>
+            <>
+              <p className="mb-1 text-sm text-muted-foreground">Chempionatda qatnashish va savollar uchun:</p>
+              <LeagueContacts settings={settings} />
+            </>
           ) : (
             <p className="text-sm text-muted-foreground">Aloqa ma’lumotlari tez orada qo‘shiladi.</p>
+          )}
+          {socialLinks(settings).length > 0 && (
+            <>
+              <h3 className="mt-5 mb-2 font-semibold">Bizni kuzating</h3>
+              <SocialLinks settings={settings} withLabel />
+            </>
           )}
         </aside>
       </div>

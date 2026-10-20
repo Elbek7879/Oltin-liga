@@ -131,6 +131,7 @@ export const httpApi: LeagueApi = {
 
   // ---------- Admin: musobaqa ----------
   saveGroups: (seasonId, groups) => request("PUT", adm(`/seasons/${enc(seasonId)}/groups`), { groups }),
+  resetGroups: (seasonId) => request("DELETE", adm(`/seasons/${enc(seasonId)}/groups`)),
   createMatch: (seasonId, input) => request("POST", adm(`/seasons/${enc(seasonId)}/matches`), input),
   updateMatch: (matchId, input) => request("PUT", adm(`/matches/${enc(matchId)}`), input),
   deleteMatch: (matchId) => request("DELETE", adm(`/matches/${enc(matchId)}`)),
@@ -156,6 +157,10 @@ export const httpApi: LeagueApi = {
   listVenues: () => request("GET", adm("/venues")),
   saveVenue: (id: ID | null, input) => (id ? request("PUT", adm(`/venues/${enc(id)}`), input) : request("POST", adm("/venues"), input)),
   deleteVenue: (id) => request("DELETE", adm(`/venues/${enc(id)}`)),
+  listRoundTeams: (seasonId) => request("GET", adm(`/seasons/${enc(seasonId)}/round-teams`)),
+  saveRoundTeam: (seasonId, input) => request("PUT", adm(`/seasons/${enc(seasonId)}/round-teams`), input),
+  deleteRoundTeam: (id) => request("DELETE", adm(`/round-teams/${enc(id)}`)),
+  setPlayerPhoto: (playerId, photoUrl) => request("PUT", adm(`/players/${enc(playerId)}/photo`), { photoUrl }),
   uploadMedia: (file, filename) => {
     const form = new FormData()
     form.append("file", file, filename)

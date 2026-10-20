@@ -14,4 +14,8 @@ public class LeagueSettings extends BaseEntity {
     public String about;
     public String contactPhone = "";
     public String telegram = "";
+    /** Ijtimoiy tarmoqlar — to'liq havola (https://...), bo'sh bo'lsa saytda ko'rsatilmaydi */
+    public String telegramChannel = "";
+    public String instagram = "";
+    public String youtube = "";
 }

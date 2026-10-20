@@ -9,8 +9,8 @@ import { loginAsAdmin } from "./helpers"
  */
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]
 
-const PUBLIC = ["/", "/oyinlar", "/jadval", "/pley-off", "/jamoalar", "/futbolchilar", "/statistika", "/yangiliklar", "/mavsumlar", "/chempionlar", "/homiylar", "/liga-haqida", "/nizom"]
-const ADMIN = ["/admin", "/admin/natijalar", "/admin/oyinlar", "/admin/guruhlar", "/admin/jamoalar", "/admin/futbolchilar", "/admin/pley-off", "/admin/mavsumlar", "/admin/yangiliklar", "/admin/homiylar", "/admin/hisobotlar", "/admin/sozlamalar", "/admin/sozlamalar?tab=foydalanuvchilar", "/admin/hisobim"]
+const PUBLIC = ["/", "/oyinlar", "/jadval", "/pley-off", "/jamoalar", "/futbolchilar", "/statistika", "/ramziy-jamoa", "/yangiliklar", "/mavsumlar", "/chempionlar", "/homiylar", "/liga-haqida", "/nizom"]
+const ADMIN = ["/admin", "/admin/natijalar", "/admin/oyinlar", "/admin/guruhlar", "/admin/jamoalar", "/admin/futbolchilar", "/admin/pley-off", "/admin/ramziy-jamoa", "/admin/mavsumlar", "/admin/yangiliklar", "/admin/homiylar", "/admin/hisobotlar", "/admin/sozlamalar", "/admin/sozlamalar?tab=foydalanuvchilar", "/admin/hisobim"]
 
 async function audit(page: Page, label: string) {
   await page.waitForLoadState("networkidle")
@@ -80,8 +80,8 @@ test.describe("Klaviatura bilan boshqarish", () => {
 
   test("admin dialogi klaviatura bilan ochiladi, fokus ichida qoladi va Esc bilan yopiladi", async ({ page }) => {
     await loginAsAdmin(page)
-    await page.goto("/admin/jamoalar")
-    const open = page.getByRole("button", { name: "Jamoa qo‘shish" })
+    await page.goto("/admin/oyinlar")
+    const open = page.getByRole("button", { name: "O‘yin qo‘shish" })
     await open.focus()
     await page.keyboard.press("Enter")
     const dialog = page.getByRole("dialog")

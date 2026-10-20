@@ -85,3 +85,35 @@ describe("natija rasmi: sayt manzili", () => {
     expect(publicSiteName("Payariqliga.uz:443")).toBe("payariqliga.uz")
   })
 })
+
+describe("natija rasmi: kirill yozuvida", () => {
+  it("rasm ma’lumotlari va post matni kirillcha, sayt domeni o‘zgarmaydi", async () => {
+    const { matchImageInCyrillic } = await import("../match-image")
+    const d: MatchImageData = {
+      kind: "result",
+      badge: "Yakuniy hisob",
+      season: "2026-yil, 2-mavsum",
+      stage: "A guruhi, 2-tur",
+      home: { name: "Qayirma", team: null, scorers: ["Zafar Ochilov 12′"], reds: [], dimmed: false },
+      away: { name: "Cho‘rsh", team: null, scorers: [], reds: [], dimmed: true },
+      score: { home: 2, away: 0 },
+      note: null,
+      time: "15:00",
+      date: "Shanba, 2026-yil 18-oktabr",
+      when: { weekday: "Shanba", day: 18, month: "oktabr", year: 2026 },
+      venue: "Mirzacho‘l Birlik Arena",
+      site: "payariqliga.uz",
+    }
+    const c = matchImageInCyrillic(d)
+    expect(c.badge).toBe("Якуний ҳисоб")
+    expect(c.home.name).toBe("Қайирма")
+    expect(c.when?.weekday).toBe("Шанба")
+    expect(matchCaption(c).split("\n")).toEqual([
+      "А гуруҳи, 2-тур",
+      "Қайирма 2:0 Чўрш",
+      "Голлар: Зафар Очилов 12′ (Қайирма)",
+      "Шанба, 2026-йил 18-октабр, 15:00, Мирзачўл Бирлик Арена",
+      "Пайариқ Олтин Лигаси, payariqliga.uz",
+    ])
+  })
+})

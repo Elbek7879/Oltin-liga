@@ -243,6 +243,39 @@ class TelegramBotIntegrationTest extends IntegrationTestBase {
         assertThat(jdbc.queryForObject("select count(*) from audit_logs where summary like '%(Telegram)%' and username = ?", Integer.class, ADMIN)).isGreaterThan(3);
     }
 
+    @Test
+    @DisplayName("buzilgan tugmalar, guruh chati, matnsiz xabar va o'chirilgan admin: bot xatosiz javob beradi, ruxsatni cheklaydi")
+    void strangeUpdates() throws Exception {
+        setUpMatchToday();
+        linkChat();
+        // Buzilgan yoki eskirgan tugma ma'lumoti — har doim javob beriladi, istisno tashqariga chiqmaydi
+        for (String data : List.of("", "x", "g", "o", "o.!!!", "o." + "A".repeat(22), "g.AAAA.1", "zz.yy.xx.ww")) {
+            CALLS.clear();
+            press(data);
+            assertThat(CALLS).as("tugma: '%s'", data).anyMatch(c -> c.method().equals("answerCallbackQuery"));
+        }
+        // Rasm yoki stiker (matnsiz xabar) — bugungi o'yinlar ro'yxati ochiladi
+        CALLS.clear();
+        handler.handle(mapper.valueToTree(Map.of("update_id", 3, "message", Map.of("message_id", 2,
+                "chat", Map.of("id", CHAT, "type", "private"), "from", Map.of("id", CHAT), "sticker", Map.of("file_id", "x")))));
+        assertThat(CALLS.get(0).params().get("text").asText()).contains("Bugungi o‘yinlar");
+        // Guruh va kanallardagi xabarlarga bot javob bermaydi
+        CALLS.clear();
+        handler.handle(mapper.valueToTree(Map.of("update_id", 4, "message", Map.of("message_id", 3, "text", "Bugungi o‘yinlar",
+                "chat", Map.of("id", -100, "type", "group"), "from", Map.of("id", CHAT)))));
+        assertThat(CALLS).isEmpty();
+        // Admin o'chirib qo'yilsa, ulangan chat ham ruxsatini darhol yo'qotadi
+        AppUser admin = users.findByUsernameIgnoreCase(ADMIN).orElseThrow();
+        admin.enabled = false;
+        users.save(admin);
+        CALLS.clear();
+        handler.handle(message(CHAT, "Bugungi o‘yinlar"));
+        assertThat(CALLS.get(0).params().get("text").asText()).contains("faqat Payariq Oltin Ligasi tashkilotchilari uchun");
+        press("t");
+        assertThat(lastAnswer()).contains("Ruxsat yo‘q");
+        assertThat(match().status).isEqualTo(MatchStatus.SCHEDULED);
+    }
+
     /** Uy jamoasining (ro'yxatda birinchi) gol tugmasi */
     private String firstGoalButton() {
         for (JsonNode row : lastMarkup()) for (JsonNode b : row) if (b.get("text").asText().endsWith(" gol")) return b.get("callback_data").asText();

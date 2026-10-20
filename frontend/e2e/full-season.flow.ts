@@ -22,6 +22,43 @@ function isoDate(daysFromToday: number) {
   return d.toISOString().slice(0, 10)
 }
 
+const EMPTY_PUBLIC = ["/", "/oyinlar", "/jadval", "/pley-off", "/jamoalar", "/futbolchilar", "/statistika", "/ramziy-jamoa", "/yangiliklar", "/mavsumlar", "/chempionlar", "/homiylar", "/liga-haqida", "/nizom"]
+const EMPTY_ADMIN = ["/admin", "/admin/mavsumlar", "/admin/jamoalar", "/admin/futbolchilar", "/admin/guruhlar", "/admin/oyinlar", "/admin/natijalar", "/admin/pley-off", "/admin/ramziy-jamoa", "/admin/yangiliklar", "/admin/homiylar", "/admin/hisobotlar", "/admin/sozlamalar", "/admin/hisobim"]
+
+/** Bo'sh baza (yangi o'rnatilgan sayt): har bir sahifa telefonda va kompyuterda xatosiz, tushunarli bo'sh holat bilan ochiladi */
+async function sweepEmpty(page: Page, urls: string[]) {
+  const problems: string[] = []
+  const onConsole = (m: { type(): string; text(): string }) => {
+    if (m.type() === "error") problems.push(`konsol: ${m.text()}`)
+  }
+  const onError = (e: Error) => problems.push(`JS xato: ${e.message}`)
+  const onResponse = (r: { status(): number; url(): string }) => {
+    if (r.status() >= 400) problems.push(`HTTP ${r.status()}: ${r.url()}`)
+  }
+  page.on("console", onConsole)
+  page.on("pageerror", onError)
+  page.on("response", onResponse)
+  for (const width of [375, 1440]) {
+    await page.setViewportSize({ width, height: 900 })
+    for (const url of urls) {
+      await page.goto(url)
+      await page.waitForLoadState("networkidle")
+      await expect(page.locator("main h1").first()).toBeAttached()
+      const state = await page.evaluate(() => ({
+        overflow: document.documentElement.scrollWidth - window.innerWidth,
+        error: (document.querySelector("main")?.textContent ?? "").includes("Ma’lumotni yuklab bo‘lmadi"),
+      }))
+      if (state.overflow > 0) problems.push(`${url}, ${width}px: gorizontal scroll ${state.overflow}px`)
+      if (state.error) problems.push(`${url}, ${width}px: «Ma’lumotni yuklab bo‘lmadi»`)
+    }
+  }
+  page.off("console", onConsole)
+  page.off("pageerror", onError)
+  page.off("response", onResponse)
+  await page.setViewportSize({ width: 1280, height: 720 })
+  expect(problems, problems.join("\n")).toEqual([])
+}
+
 /** Natija kiritish. scorer berilsa — shu jamoa uchun bitta gol «Gol» tugmasi va o'yinchini bosish bilan yoziladi */
 async function enterResult(page: Page, plan: (home: string, away: string) => { home: number; away: number; quick?: "home" | "away" }) {
   const plus = page.getByRole("button", { name: /gollari: oshirish/ })
@@ -51,10 +88,13 @@ test("bo‘sh bazadan chempion aniqlangunga qadar to‘liq jarayon", async ({ pa
   // Bo'sh sayt: muxlisga tushunarli xabar
   await page.goto("/")
   await expect(page.getByText("Birinchi mavsum tez orada boshlanadi")).toBeVisible()
+  await sweepEmpty(page, EMPTY_PUBLIC)
 
   // 1. Kirish va birinchi mavsum
   await loginAsAdmin(page)
   await expect(page.getByText("Birinchi mavsumni yarating")).toBeVisible()
+  await sweepEmpty(page, EMPTY_ADMIN)
+  await page.goto("/admin")
   await page.getByRole("link", { name: "Mavsumlar bo‘limiga o‘tish" }).click()
   await page.getByRole("button", { name: "Yangi mavsum" }).click()
   await page.getByLabel("Nomi").fill("Sinov mavsumi")
@@ -103,19 +143,53 @@ test("bo‘sh bazadan chempion aniqlangunga qadar to‘liq jarayon", async ({ pa
   await page.getByRole("button", { name: "Ha, saqlash" }).click()
   await expect(page.getByText("Guruhlar saqlandi va juftliklar tuzildi. Endi «O‘yinlar» bo‘limida sana va vaqtlarni belgilang.")).toBeVisible()
 
-  // 5. Juftliklar qur'adan keyin o'zi tuzildi (3 tur × 2 o'yin). Sanani faqat admin qo'yadi —
-  //    o'tgan sanalar: natijalar darhol kiritiladi. Har turga bitta sana, vaqtlar har o'yinga alohida.
+  // 4a. Qur'adan keyin mavsum ishtirokchilari qulflanadi: jamoa qo'shib bo'lmaydi
+  await page.goto("/admin/jamoalar")
+  await expect(page.getByText("Qur’a tashlangan — guruhlar shakllangan.")).toBeVisible()
+  await expect(page.getByRole("button", { name: "Jamoa qo‘shish" })).toHaveCount(0)
+  await expect(page.getByRole("switch", { name: /mavsumida ishtirok/ }).first()).toBeDisabled()
+  // Jamoa esdan chiqqan bo'lsa: natija yo'q ekan, qur'ani bekor qilib, qaytadan tashlash mumkin
+  await page.goto("/admin/guruhlar")
+  await page.getByRole("button", { name: "Qur’ani bekor qilish" }).click()
+  await page.getByRole("button", { name: "Ha, bekor qilish" }).click()
+  await expect(page.getByText("Qur’a bekor qilindi. Jamoalarni o‘zgartirib, qur’ani qaytadan tashlang.")).toBeVisible()
+  await page.goto("/admin/jamoalar")
+  await expect(page.getByRole("button", { name: "Jamoa qo‘shish" })).toBeVisible()
+  await expect(page.getByText("Qur’a tashlangan — guruhlar shakllangan.")).toHaveCount(0)
+  await page.goto("/admin/guruhlar")
+  await page.getByRole("button", { name: "Qur’a tashlash" }).click()
+  await page.getByRole("button", { name: "Tasdiqlash va saqlash" }).click()
+  await page.getByRole("button", { name: "Ha, saqlash" }).click()
+  await expect(page.getByText("Guruhlar saqlandi va juftliklar tuzildi. Endi «O‘yinlar» bo‘limida sana va vaqtlarni belgilang.")).toBeVisible()
+
+  // 5. Juftliklar qur'adan keyin o'zi tuzildi (3 tur × 2 o'yin). Sanani faqat admin qo'yadi — «Navbatdagi o'yinlar»
+  //    kunma-kun chiqadi. 4 jamoali guruhda bir jamoa kuniga bir marta o'ynaydi: har kunga 2 ta o'yin navbatga chiqadi.
+  //    O'tgan sanalar — natijalar darhol kiritiladi.
   await page.goto("/admin/oyinlar")
-  await expect(page.getByRole("heading", { name: "Sanasi belgilanmagan o‘yinlar (6)" })).toBeVisible()
-  for (const [i, round] of ["1-tur", "2-tur", "3-tur"].entries()) {
-    await page.getByLabel(`${round}: hamma o‘yinlar uchun sana`).fill(isoDate(-21 + i * 7))
-    await page.getByRole("button", { name: "Bo‘shlarga qo‘yish" }).nth(i).click()
-  }
+  await expect(page.getByRole("heading", { name: "Navbatdagi o‘yinlar" })).toBeVisible()
+  await expect(page.getByText("Sanasi belgilanmagan barcha o‘yinlar (6)")).toBeVisible()
   const times = page.getByLabel(/: boshlanish vaqti$/)
-  for (let i = 0; i < 6; i++) await times.nth(i).fill(i % 2 === 0 ? "10:00" : "12:30")
-  await page.screenshot({ path: path.join(OUT, "flow-02-sanalar.png") })
-  await page.getByRole("button", { name: "Saqlash (6)" }).click()
-  await expect(page.getByText("6 ta o‘yin sanasi saqlandi — saytda ko‘rinadi")).toBeVisible()
+  for (let day = 0; day < 3; day++) {
+    await expect(times).toHaveCount(2)
+    await expect(times.first()).toHaveValue("")
+    await page.getByLabel("O‘yin kuni").fill(isoDate(-21 + day * 7))
+    await page.getByLabel("Birinchi o‘yin vaqti").fill("10:00")
+    await page.getByRole("button", { name: "Kun va vaqtlarni qo‘yish" }).click()
+    // Vaqtlar o'yin davomiyligi bilan ketma-ket: 2×20 daqiqa — har 1 soatda
+    await expect(times.nth(0)).toHaveValue("10:00")
+    await expect(times.nth(1)).toHaveValue("11:00")
+    if (day === 0) {
+      await page.screenshot({ path: path.join(OUT, "flow-02-sanalar.png") })
+      // Telefonda ham navbat bloki sig'adi, gorizontal surilish yo'q
+      await page.setViewportSize({ width: 375, height: 812 })
+      await page.getByRole("heading", { name: "Navbatdagi o‘yinlar" }).scrollIntoViewIfNeeded()
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0)
+      await page.screenshot({ path: path.join(OUT, "flow-02b-navbat-telefon.png"), fullPage: true })
+      await page.setViewportSize({ width: 1280, height: 720 })
+    }
+    await page.getByRole("button", { name: "Saqlash (2)" }).click()
+    await expect(page.getByText("2 ta o‘yin sanasi saqlandi — saytda ko‘rinadi").first()).toBeVisible()
+  }
   await expect(page.getByText("Barcha o‘yinlarning sanasi belgilangan.", { exact: false })).toBeVisible()
 
   // 6. Guruh natijalari. Qizil Olma o'yinlarida u 2:0 yutadi (bitta gol — Sardor Karimov, tezkor tugma bilan),

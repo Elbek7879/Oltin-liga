@@ -238,6 +238,21 @@ export function playoffPlan(groups: GroupFinish[], seedLots: Record<number, ID[]
   return { seeds, bracketSize: size, playIns, slots, ties }
 }
 
+/** Guruhdagi o'rin nomi: «A guruhi g‘olibi», «B guruhi 2-o‘rni» */
+export function positionLabel(groupName: string, position: number) {
+  return position === 1 ? `${groupName} guruhi g‘olibi` : `${groupName} guruhi ${position}-o‘rni`
+}
+
+/**
+ * Taxminiy setka (guruh bosqichi hali tugamagan): jamoa nomlari o'rniga guruhdagi o'rinlar yoziladi —
+ * Jahon chempionatidagidek «A guruhi g‘olibi — B guruhi 2-o‘rni». Haqiqiy setka faqat barcha guruh o'yinlari tugagach tuziladi.
+ */
+export function withPositionLabels(matches: Match[], plan: Pick<PlayoffPlan, "seeds">): Match[] {
+  const label = new Map(plan.seeds.map((s) => [s.seasonTeamId, positionLabel(s.groupName, s.position)]))
+  const side = (id: ID | null, fallback: string | null | undefined) => (id ? label.get(id) ?? fallback ?? null : fallback ?? null)
+  return matches.map((m) => ({ ...m, homeId: null, awayId: null, homeLabel: side(m.homeId, m.homeLabel), awayLabel: side(m.awayId, m.awayLabel) }))
+}
+
 /** Jadvallar bo'yicha guruh yakunlari (pley-off rejasi uchun) */
 export function groupFinishes(
   groups: { id: ID; name: string; seasonTeamIds: ID[] }[],

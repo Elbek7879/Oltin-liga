@@ -74,7 +74,7 @@ public class LiveMatchService {
     }
 
     public int halfMinutes(Match m) {
-        return seasons.findById(m.seasonId).map((Season s) -> s.halfMinutes).orElse(25);
+        return seasons.findById(m.seasonId).map((Season s) -> s.halfMinutes).orElse(20);
     }
 
     // ---------- Boshlash va bo'limlar ----------

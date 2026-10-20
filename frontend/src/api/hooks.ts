@@ -18,6 +18,7 @@ export const qk = {
   dashboard: (seasonId: ID) => ["admin", "dashboard", seasonId] as const,
   adminTeams: (seasonId: ID) => ["admin", "teams", seasonId] as const,
   adminPlayers: (seasonId: ID) => ["admin", "players", seasonId] as const,
+  roundTeams: (seasonId: ID) => ["admin", "round-teams", seasonId] as const,
   finishPreview: (seasonId: ID) => ["admin", "finish-preview", seasonId] as const,
   report: (seasonId: ID) => ["admin", "report", seasonId] as const,
   audit: ["admin", "audit"] as const,
@@ -59,6 +60,9 @@ export const useDashboard = (seasonId: ID | undefined) =>
   useQuery({ queryKey: qk.dashboard(seasonId ?? ""), queryFn: () => api.getDashboard(seasonId!), enabled: Boolean(seasonId) })
 export const useAdminTeams = (seasonId: ID | undefined) =>
   useQuery({ queryKey: qk.adminTeams(seasonId ?? ""), queryFn: () => api.listTeamsAdmin(seasonId!), enabled: Boolean(seasonId) })
+/** Ramziy jamoalar, qoralamalar bilan (admin panel) */
+export const useAdminRoundTeams = (seasonId: ID | undefined) =>
+  useQuery({ queryKey: qk.roundTeams(seasonId ?? ""), queryFn: () => api.listRoundTeams(seasonId!), enabled: Boolean(seasonId) })
 export const useAdminPlayers = (seasonId: ID | undefined) =>
   useQuery({ queryKey: qk.adminPlayers(seasonId ?? ""), queryFn: () => api.listPlayersAdmin(seasonId!), enabled: Boolean(seasonId) })
 export const useFinishPreview = (seasonId: ID | undefined, enabled: boolean) =>

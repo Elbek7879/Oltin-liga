@@ -67,9 +67,22 @@ public final class Dto {
     }
 
     /** Ommaviy saytdagi futbolchi — telefon kabi maxfiy maydonlarsiz */
-    public record PublicPlayer(UUID id, String firstName, String lastName, Position position, Integer birthYear) {
+    /** Saytda ko'rinadigan futbolchi ma'lumoti (telefon raqami yo'q); photoUrl — ramziy jamoa va futbolchi sahifasi uchun */
+    public record PublicPlayer(UUID id, String firstName, String lastName, Position position, Integer birthYear, String photoUrl) {
         public static PublicPlayer of(Player p) {
-            return new PublicPlayer(p.getId(), p.firstName, p.lastName, p.position, p.birthYear);
+            return new PublicPlayer(p.getId(), p.firstName, p.lastName, p.position, p.birthYear, p.photoUrl);
+        }
+    }
+
+    public record RoundTeamSlotDto(String slot, UUID playerId, UUID seasonTeamId) {
+    }
+
+    /** Ramziy jamoa: guruh bosqichida round, pley-offda playoffRound to'ldiriladi */
+    public record RoundTeamDto(UUID id, MatchStage stage, Integer round, PlayoffRound playoffRound, boolean published, Instant publishedAt,
+                               List<RoundTeamSlotDto> slots) {
+        public static RoundTeamDto of(uz.payariq.liga.model.RoundTeam t) {
+            return new RoundTeamDto(t.getId(), t.stage, t.round, t.playoffRound, t.published, t.publishedAt,
+                    t.slots.stream().map(s -> new RoundTeamSlotDto(s.slot, s.playerId, s.seasonTeamId)).toList());
         }
     }
 
@@ -155,7 +168,8 @@ public final class Dto {
             List<PlayerStats.TeamDiscipline> discipline,
             List<AwardDto> awards,
             List<AdjustmentDto> adjustments,
-            List<LotDto> lots) {
+            List<LotDto> lots,
+            List<RoundTeamDto> roundTeams) {
     }
 
     /** Teng holatdagi qur'a natijasi: scope — "GROUP:<id>" yoki "SEED:<o'rin>" */
@@ -205,9 +219,10 @@ public final class Dto {
         }
     }
 
-    public record SettingsDto(String name, String shortName, String region, String about, String contactPhone, String telegram) {
+    public record SettingsDto(String name, String shortName, String region, String about, String contactPhone, String telegram,
+                              String telegramChannel, String instagram, String youtube) {
         public static SettingsDto of(LeagueSettings s) {
-            return new SettingsDto(s.name, s.shortName, s.region, s.about, s.contactPhone, s.telegram);
+            return new SettingsDto(s.name, s.shortName, s.region, s.about, s.contactPhone, s.telegram, s.telegramChannel, s.instagram, s.youtube);
         }
     }
 

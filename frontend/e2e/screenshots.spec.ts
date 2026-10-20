@@ -6,7 +6,7 @@
  */
 import path from "node:path"
 import { expect, test, type Page } from "@playwright/test"
-import { loginAsAdmin } from "./helpers"
+import { backToActiveSeason, loginAsAdmin, openNewDraftSeason } from "./helpers"
 
 const OUT = path.resolve(import.meta.dirname, "../../docs/screenshots/06-bosqich")
 const SIZES = { telefon: { width: 375, height: 812 }, kompyuter: { width: 1440, height: 900 } }
@@ -63,7 +63,8 @@ test("tashkilotchi: yo‘l xaritasi, futbolchilar, tezkor gol, pley-off va bayon
   await page.getByText("Barcha bosqichlar").click()
   await page.getByRole("region", { name: "Mavsum bosqichlari" }).screenshot({ path: path.join(OUT, "a02-yol-xaritasi.png") })
 
-  // Jamoa qo'shish oynasida ixtiyoriy futbolchilar bo'limi
+  // Jamoa qo'shish oynasida ixtiyoriy futbolchilar bo'limi (joriy mavsumda qur'a tashlangan — yangi mavsumda)
+  await openNewDraftSeason(page)
   await page.goto("/admin/jamoalar")
   await page.getByRole("button", { name: "Jamoa qo‘shish" }).click()
   await page.getByLabel("Jamoa nomi").fill("Yangi Hayot")
@@ -73,6 +74,7 @@ test("tashkilotchi: yo‘l xaritasi, futbolchilar, tezkor gol, pley-off va bayon
   await page.getByRole("button", { name: "Qatorlarga ajratish" }).click()
   await shot(page, "a03-jamoa-va-futbolchilar-kompyuter", false)
   await page.keyboard.press("Escape")
+  await backToActiveSeason(page)
 
   // Futbolchilarni ro'yxat bilan qo'shish (xato qatorlar darhol ko'rsatiladi)
   await page.goto("/admin/futbolchilar")

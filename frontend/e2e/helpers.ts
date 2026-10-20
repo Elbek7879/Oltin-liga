@@ -22,10 +22,30 @@ function adminCredentials() {
 export async function loginAsAdmin(page: Page) {
   const { username, password } = adminCredentials()
   await page.goto("/admin/kirish")
-  await page.getByLabel("Login").fill(username)
-  await page.getByLabel("Parol", { exact: true }).fill(password)
-  await page.getByRole("button", { name: "Kirish" }).click()
+  // Yorliqlar lotin yoki kirill yozuvida bo'lishi mumkin
+  await page.getByLabel(/^(Login|Логин)$/).fill(username)
+  await page.getByLabel(/^(Parol|Парол)$/).fill(password)
+  await page.getByRole("button", { name: /^(Kirish|Кириш)$/ }).click()
   await expect(page).toHaveURL(/\/admin$/)
+}
+
+/**
+ * Yangi (tayyorlanayotgan) mavsum ochadi — qur'asi hali tashlanmagan, jamoa qo'shish ochiq.
+ * Admin panel o'zi shu mavsumga o'tadi. Qaytaradi: mavsum nomi.
+ */
+export async function openNewDraftSeason(page: Page, name = `Sinov mavsumi ${Date.now().toString(36)}`) {
+  await page.goto("/admin/mavsumlar")
+  await page.getByRole("button", { name: "Yangi mavsum" }).click()
+  await page.getByLabel("Nomi").fill(name)
+  await page.getByRole("button", { name: "Mavsumni yaratish" }).click()
+  await expect(page.getByText(`«${name}» yaratildi`)).toBeVisible()
+  return name
+}
+
+/** Admin panelni yana joriy (boshlangan) mavsumga qaytaradi */
+export async function backToActiveSeason(page: Page) {
+  await page.evaluate(() => localStorage.removeItem("pol-season"))
+  await page.reload()
 }
 
 export async function noHorizontalScroll(page: Page) {

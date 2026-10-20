@@ -1,26 +1,17 @@
 import { ArrowLeft, Newspaper } from "lucide-react"
 import { Link, useParams } from "react-router"
 import { useNewsItem } from "@/api/hooks"
-import { EmptyState, PageSkeleton } from "@/components/league/states"
-import { Button } from "@/components/ui/button"
+import { isNotFound } from "@/api/types"
+import { ErrorState, NotFoundState, PageSkeleton } from "@/components/league/states"
 import { formatDate } from "@/lib/format"
 
 export default function NewsItemPage() {
   const { slug = "" } = useParams()
-  const { data, isLoading, error } = useNewsItem(slug)
+  const { data, isLoading, error, refetch } = useNewsItem(slug)
   if (isLoading) return <PageSkeleton />
-  if (error || !data) {
-    return (
-      <div className="container-page py-10">
-        <EmptyState
-          icon={Newspaper}
-          title="Yangilik topilmadi"
-          description={error?.message}
-          action={<Button asChild variant="outline"><Link to="/yangiliklar">Barcha yangiliklar</Link></Button>}
-        />
-      </div>
-    )
-  }
+  if (isNotFound(error) || (!error && !data))
+    return <NotFoundState icon={Newspaper} title="Yangilik topilmadi" description="Havola eskirgan yoki yangilik o‘chirilgan bo‘lishi mumkin." backTo="/yangiliklar" backLabel="Barcha yangiliklar" />
+  if (error || !data) return <ErrorState message={error?.message} onRetry={() => refetch()} className="container-page" />
   return (
     <article className="container-page pt-5 md:pt-8">
       <div className="mx-auto max-w-2xl">

@@ -6,7 +6,7 @@ import { useHeadToHead } from "@/api/hooks"
 import { FeaturedMatch } from "@/components/league/featured-match"
 import { MatchImageDialog, matchImageTitle } from "@/components/league/match-image-dialog"
 import { BallIcon, CardIcon } from "@/components/league/icons"
-import { EmptyState, ErrorState, PageSkeleton } from "@/components/league/states"
+import { EmptyState, ErrorState, NotFoundState, PageSkeleton } from "@/components/league/states"
 import { SuspensionsList } from "@/components/league/suspensions-list"
 import { TeamCrest } from "@/components/league/team-crest"
 import { Button } from "@/components/ui/button"
@@ -16,6 +16,8 @@ import { suspendedFor } from "@/domain/discipline"
 import { formatDate, formatShortDate, formatTime, MATCH_STATUS_LABEL, positionShort } from "@/lib/format"
 import { sideName, stageLabel, totalScore } from "@/lib/match"
 import { cn } from "@/lib/utils"
+import { getScript } from "@/hooks/use-script"
+import { toCyrillic } from "@/lib/translit"
 
 function EventIcon({ type }: { type: MatchEvent["type"] }) {
   if (type === "YELLOW") return <CardIcon kind="yellow" />
@@ -180,10 +182,10 @@ async function share(match: Match, index: SeasonIndex) {
   const url = window.location.href
   try {
     if (navigator.share) {
-      await navigator.share({ title: "Payariq Oltin Ligasi", text, url })
+      await navigator.share({ title: getScript() === "cyrl" ? toCyrillic("Payariq Oltin Ligasi") : "Payariq Oltin Ligasi", text: getScript() === "cyrl" ? toCyrillic(text) : text, url })
       return
     }
-    await navigator.clipboard.writeText(`${text}\n${url}`)
+    await navigator.clipboard.writeText(`${getScript() === "cyrl" ? toCyrillic(text) : text}\n${url}`)
     toast.success("Havola nusxalandi")
   } catch (err) {
     if ((err as Error).name !== "AbortError") toast.error("Ulashib bo‘lmadi. Havolani brauzer manzil satridan nusxalang.")
@@ -199,18 +201,13 @@ export default function MatchPage() {
   const match = index.bundle.matches.find((m) => m.id === matchId)
   if (!match) {
     return (
-      <div className="container-page py-10">
-        <EmptyState
-          icon={ListX}
-          title="O‘yin topilmadi"
-          description="Bu o‘yin tanlangan mavsumga tegishli emas yoki o‘chirilgan. Yuqoridan boshqa mavsumni tanlab ko‘ring."
-          action={
-            <Button asChild variant="outline">
-              <Link to="/oyinlar">O‘yinlar ro‘yxati</Link>
-            </Button>
-          }
-        />
-      </div>
+      <NotFoundState
+        icon={ListX}
+        title="O‘yin topilmadi"
+        description="Bu o‘yin tanlangan mavsumga tegishli emas yoki o‘chirilgan. Yuqoridan boshqa mavsumni tanlab ko‘ring."
+        backTo="/oyinlar"
+        backLabel="O‘yinlar ro‘yxati"
+      />
     )
   }
   const venue = index.venue(match.venueId)

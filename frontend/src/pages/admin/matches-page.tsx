@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod"
-import { CalendarCheck, CalendarClock, CalendarDays, CalendarPlus, ImageDown, ListChecks, Pencil, Trash, TriangleAlert } from "lucide-react"
+import { CalendarCheck, CalendarClock, CalendarDays, CalendarPlus, ChevronDown, ImageDown, ListChecks, ListOrdered, Pencil, Trash, TriangleAlert } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { Controller, useForm } from "react-hook-form"
 import { useSearchParams } from "react-router"
@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { roundLabel } from "@/domain/playoff"
-import { findScheduleConflicts, findVenueConflicts, primaryVenueId, toLocalIso } from "@/domain/schedule"
+import { canDeleteGroupMatch, durationLabel, findScheduleConflicts, findVenueConflicts, nextMatchQueue, primaryVenueId, toLocalIso, venueBusyMinutes } from "@/domain/schedule"
 import type { Match, MatchStatus } from "@/domain/types"
 import { useSeason } from "@/hooks/use-season"
 import { useSeasonData, type SeasonIndex } from "@/hooks/use-season-data"
@@ -92,9 +92,10 @@ function MatchFormDialog({
   }, [values.date, values.time, values.homeId, values.awayId, match?.id, index])
 
   // Liga bitta stadionda o'ynaydi: shu vaqtda maydon bandmi
+  const busyMinutes = venueBusyMinutes(index.bundle.season.rules.halfMinutes)
   const venueBusy = useMemo(() => {
     if (!values.date || !values.time || values.venueId === NONE) return []
-    return findVenueConflicts({ id: match?.id ?? "new", venueId: values.venueId, kickoff: toLocalIso(values.date, values.time) }, index.bundle.matches)
+    return findVenueConflicts({ id: match?.id ?? "new", venueId: values.venueId, kickoff: toLocalIso(values.date, values.time) }, index.bundle.matches, busyMinutes)
   }, [values.date, values.time, values.venueId, match?.id, index])
 
   const onSubmit = form.handleSubmit(async (v) => {
@@ -222,7 +223,7 @@ function MatchFormDialog({
                   {venueBusy.map((m) => (
                     <li key={`venue-${m.id}`}>
                       {index.venue(values.venueId)?.name} shu vaqtda band: {index.team(m.homeId)?.name ?? "Aniqlanmagan"} — {index.team(m.awayId)?.name ?? "Aniqlanmagan"},{" "}
-                      {formatShortDate(m.kickoff)}, {formatTime(m.kickoff)}. Bir o‘yin maydonni taxminan 2 soat band qiladi.
+                      {formatShortDate(m.kickoff)}, {formatTime(m.kickoff)}. Bir o‘yin maydonni taxminan {durationLabel(busyMinutes)} band qiladi.
                     </li>
                   ))}
                   {conflicts.map((c) => {
@@ -260,6 +261,9 @@ export default function AdminMatchesPage() {
   const [group, setGroup] = useState("all")
   const [status, setStatus] = useState("all")
   const [imageFor, setImageFor] = useState<string | null>(null)
+  // Bir kunda o'rtacha 4–5 o'yin: navbatdagi o'yinlar shu soncha ko'rsatiladi
+  const [perDay, setPerDay] = useState(5)
+  const [showAllUndated, setShowAllUndated] = useState(false)
   const remove = useAdminMutation((id: string) => api.deleteMatch(id))
   const fixtures = useAdminMutation(() => api.generateFixtures(index!.bundle.season.id))
 
@@ -287,6 +291,8 @@ export default function AdminMatchesPage() {
     }
     return [...sections.values()]
   }, [index])
+  const queue = useMemo(() => (index ? nextMatchQueue(index.bundle.matches, index.bundle.groups.map((g) => g.id), perDay) : []), [index, perDay])
+  const undatedCount = undated.reduce((n, s) => n + s.matches.length, 0)
   const groupsWithoutFixtures = index ? index.bundle.groups.filter((g) => !index.bundle.matches.some((m) => m.groupId === g.id)) : []
 
   const list = useMemo(() => {
@@ -330,18 +336,66 @@ export default function AdminMatchesPage() {
         </p>
       )}
 
+      {index && queue.length > 0 && (
+        <section className="panel mb-4 overflow-hidden" aria-labelledby="queue-title">
+          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border px-4 py-3">
+            <div className="min-w-0 flex-1 basis-64">
+              <h2 id="queue-title" className="flex items-center gap-2 font-display text-lg">
+                <ListOrdered className="size-5 text-gold-text" aria-hidden="true" />
+                Navbatdagi o‘yinlar
+              </h2>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Keyingi o‘yin kuni uchun navbati kelgan o‘yinlar. Kunni tanlang va har biriga vaqt yozing — saqlangach saytda ko‘rinadi va keyingilari chiqadi. Bir jamoa bir kunda ikki
+                marta o‘ynamaydi.
+              </p>
+            </div>
+            <div className="grid gap-1 text-xs font-semibold">
+              <span id="per-day-label">Kuniga</span>
+              <Select value={String(perDay)} onValueChange={(v) => setPerDay(Number(v))}>
+                <SelectTrigger aria-labelledby="per-day-label" className="h-10 w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[2, 3, 4, 5, 6, 7, 8].map((n) => (
+                    <SelectItem key={n} value={String(n)}>
+                      {n} ta o‘yin
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <ScheduleBoard
+            sections={[{ key: "navbat", title: "Navbatdagi o‘yinlar", matches: queue, day: true }]}
+            index={index}
+            readOnly={readOnly}
+            metaOf={(m) => stageLabel(m, index)}
+          />
+        </section>
+      )}
       {index && undated.length > 0 && (
         <section className="panel mb-6 overflow-hidden" aria-labelledby="undated-title">
-          <div className="border-b border-border px-4 py-3">
-            <h2 id="undated-title" className="flex items-center gap-2 font-display text-lg">
-              <CalendarClock className="size-5 text-gold-text" aria-hidden="true" />
-              Sanasi belgilanmagan o‘yinlar ({undated.reduce((n, s) => n + s.matches.length, 0)})
-            </h2>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              Muxlislar bu o‘yinlarda «Sana belgilanmagan» yozuvini ko‘radi. Har biriga sana va vaqtni tanlang. Butun tur bir kunda bo‘lsa, tur qatoridagi sanani tanlab «Bo‘shlarga qo‘yish»ni bosing.
-            </p>
-          </div>
-          <ScheduleBoard sections={undated} index={index} readOnly={readOnly} metaOf={(m) => stageLabel(m, index)} />
+          <button
+            type="button"
+            onClick={() => setShowAllUndated((v) => !v)}
+            aria-expanded={showAllUndated}
+            aria-controls="undated-board"
+            className="flex min-h-12 w-full items-center gap-2 px-4 py-3 text-left hover:bg-muted/50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+          >
+            <CalendarClock className="size-5 shrink-0 text-gold-text" aria-hidden="true" />
+            <span className="min-w-0 flex-1">
+              <span id="undated-title" className="block font-display text-lg">
+                Sanasi belgilanmagan barcha o‘yinlar ({undatedCount})
+              </span>
+              <span className="block text-sm text-muted-foreground">Navbatdan tashqari o‘yinga sana qo‘yish kerak bo‘lsa (masalan, qoldirilgan o‘yin) — shu yerdan.</span>
+            </span>
+            <ChevronDown className={`size-5 shrink-0 text-muted-foreground transition-transform ${showAllUndated ? "rotate-180" : ""}`} aria-hidden="true" />
+          </button>
+          {showAllUndated && (
+            <div id="undated-board" className="border-t border-border">
+              <ScheduleBoard sections={undated} index={index} readOnly={readOnly} metaOf={(m) => stageLabel(m, index)} />
+            </div>
+          )}
         </section>
       )}
       {index && undated.length === 0 && index.bundle.matches.length > 0 && (
@@ -406,7 +460,7 @@ export default function AdminMatchesPage() {
                           <Pencil aria-hidden="true" />
                           Tahrirlash
                         </Button>
-                        {m.stage === "GROUP" && m.status !== "FINISHED" && m.status !== "LIVE" && (
+                        {canDeleteGroupMatch(m, index.bundle.matches, index.bundle.season.rules.legs) && (
                           <ConfirmAction
                             trigger={
                               <Button size="sm" variant="ghost" aria-label="O‘yinni o‘chirish" className="text-destructive hover:text-destructive">

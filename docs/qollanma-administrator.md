@@ -27,7 +27,8 @@ Boshqaruv panelining yuqorisida **Mavsum bosqichlari** turadi: qaysi qadam bajar
 
 Odatdagi tartib:
 
-1. **Mavsumlar → Yangi mavsum.** Yil, nomi, sanalari va ochko qoidalarini kiriting. So‘ng **Boshlash** tugmasi bilan mavsumni joriy qiling.
+1. **Mavsumlar → Yangi mavsum.** Yil, nomi, sanalari va ochko qoidalarini kiriting. So‘ng **Boshlash** tugmasi bilan mavsumni joriy qiling. Bir vaqtda faqat bitta mavsum boshlangan bo‘ladi — yangisini boshlash uchun eskisini yakunlang.
+   - Admin panel tepasidagi tanlagichda qaysi mavsum turgan bo‘lsa, barcha bo‘limlar (jamoalar, qur’a, o‘yinlar) o‘sha mavsum bilan ishlaydi. Yangi mavsum yaratilganda panel o‘zi o‘sha mavsumga o‘tadi. Jamoa oynasida jamoa qaysi mavsumga qo‘shilishi nomi bilan yoziladi.
 2. **Jamoalar → Jamoa qo‘shish.** Nomi, qisqa nomi (masalan, NAV), qishlog‘i, ranglari va logotipi (ixtiyoriy: bo‘lmasa, nishon ranglardan avtomatik yasaladi).
    - Shu oynaning o‘zida **Futbolchilarni hozir kiritish** bo‘limi bor (ixtiyoriy). Qatorma-qator yozing yoki ro‘yxatni Telegram, Excel yoki daftardan nusxalab **Ro‘yxatni qo‘yish** maydoniga qo‘ying: «10 Aliyev Vali hujumchi». Raqam va pozitsiya ixtiyoriy.
    - Jamoani keyin **qalam** belgisi bilan tahrirlash yoki o‘chirish mumkin. O‘tgan mavsum jamoalarini yangi mavsumga **Mavsumda** tugmachasi bilan qo‘shasiz.
@@ -37,15 +38,19 @@ Odatdagi tartib:
    - **Bir qishloq jamoalari imkon qadar bir guruhga tushmasin** belgilansa, bir qishloqdan bo‘lgan jamoalar har xil guruhlarga taqsimlanadi.
    - Natijani ko‘ring, kerak bo‘lsa **Qayta tashlash**, so‘ng **Tasdiqlash va saqlash**.
    - Tasdiqlanishi bilan **juftliklar o‘zi tuziladi**: har bir jamoa guruhdagi boshqa jamoalar bilan o‘ynaydi, o‘yinlar turlar bo‘yicha taqsimlanadi (bir turda jamoa bitta o‘yin o‘ynaydi).
-5. **O‘yinlar → sanalarni belgilash.** Sayt o‘yin sanasini o‘zi qo‘ymaydi — har bir o‘yinning sanasi va vaqtini siz belgilaysiz. Sahifa tepasida **Sanasi belgilanmagan o‘yinlar** ro‘yxati turlar bo‘yicha turadi:
-   - har bir qatorda sana, boshlanish vaqti va maydonni tanlang (maydon sifatida **Mirzacho‘l Birlik Arena** oldindan tanlangan);
-   - butun tur bir kunda o‘tsa, tur qatoridagi sanani tanlab **Bo‘shlarga qo‘yish** bosing — keyin har o‘yinga faqat vaqtini yozasiz;
-   - pastdagi **Saqlash** tugmasi tanlanganlarning hammasini birdaniga saqlaydi — o‘yin saytda o‘sha zahoti sana va vaqti bilan chiqadi;
-   - bir jamoaga yaqin vaqtda ikki o‘yin belgilansa yoki stadion band bo‘lsa, ogohlantirish chiqadi. Bir o‘yin maydonni taxminan 2 soat band qiladi (masalan, 10:00, 12:30, 15:00, 17:30);
+   - Guruhda har juftlik nizomdagidek uchrashadi: bir davrali turnirda — bir marta, ikki davralida — ikki marta. Bu juftlikka qo‘lda yana o‘yin qo‘shib (yoki boshqa o‘yinni shu juftlikka o‘zgartirib) bo‘lmaydi. Juftlikning yagona o‘yinini o‘chirib ham bo‘lmaydi — o‘yin o‘tkazilmasa, uni **Bekor qilingan** deb belgilang yoki texnik natija kiriting (bekor qilingan o‘yin o‘rniga yangisini qo‘yish mumkin).
+   - **Qur’adan keyin mavsum jamoalari qulflanadi:** yangi jamoa qo‘shib yoki jamoani mavsumdan chiqarib bo‘lmaydi («Jamoalar» bo‘limida shu haqda yozuv turadi). Jamoa nomi, logotipi va futbolchilarini tahrirlash mumkin.
+   - Jamoa esdan chiqqan bo‘lsa va hali birorta natija kiritilmagan bo‘lsa: **Guruhlar → Qur’ani bekor qilish** (guruhlar va juftliklar sanalari bilan o‘chadi, jamoalar qoladi) → jamoani qo‘shing → qur’ani qaytadan tashlang. Birinchi natija kiritilgach, qur’ani bekor qilib bo‘lmaydi.
+5. **O‘yinlar → Navbatdagi o‘yinlar.** Sayt o‘yin sanasini o‘zi qo‘ymaydi — sana va vaqtni siz belgilaysiz. Sahifa tepasida keyingi o‘yin kuni uchun **navbati kelgan o‘yinlar** chiqadi (standart 5 ta; **Kuniga** tanlagichida 2–8 ta):
+   - navbat adolatli: turlar tartibida, tur ichida guruhlar A, B, C… tartibida. Bir jamoa bir kunda ikki marta o‘ynamaydi — bunday o‘yin keyingi kunga qoladi (shuning uchun 4 jamoali bitta guruhda kuniga 2 ta o‘yin chiqadi);
+   - **O‘yin kuni**ni tanlang, **Birinchi o‘yin vaqti**ni yozing (masalan, 15:00), **O‘yinlar oralig‘i**ni tanlang (standart — har 1 soat) va **Kun va vaqtlarni qo‘yish** bosing: sana hamma o‘yinga, vaqtlar ketma-ket qo‘yiladi (15:00, 16:00, 17:00…). Istalgan qatorni qo‘lda o‘zgartirish mumkin;
+   - **Saqlash** — o‘yinlar saytda o‘sha zahoti sana va vaqti bilan chiqadi, navbatga keyingi o‘yinlar keladi;
+   - navbatdan tashqari o‘yinga sana qo‘yish kerak bo‘lsa (masalan, qoldirilgan o‘yin), pastdagi **Sanasi belgilanmagan barcha o‘yinlar** ro‘yxatini oching;
+   - bir jamoaga yaqin vaqtda ikki o‘yin belgilansa yoki stadion band bo‘lsa, ogohlantirish chiqadi. O‘yin 2 × 20 daqiqa bo‘lgani uchun bir o‘yin maydonni taxminan 1 soat band qiladi (tanaffus va jamoalar almashinuvi bilan);
    - sanani keyin o‘zgartirish uchun «Barcha o‘yinlar» ro‘yxatida o‘yinni **Tahrirlash** orqali oching.
    Saqlanmaguncha muxlislar o‘yinni «Sana belgilanmagan» deb ko‘radi, natija ham kiritilmaydi.
 6. **Natijalar.** O‘yin tugagach, hisobni va gol mualliflarini kiriting (pastga qarang). Natija faqat sanasi belgilangan o‘yinga kiritiladi.
-7. **Pley-off — o‘zi tuziladi.** Oxirgi guruh o‘yini natijasi saqlanishi bilan tizim guruhdan chiqqanlarni aniqlaydi, setkani tuzadi va raqiblarni belgilaydi:
+7. **Pley-off — o‘zi tuziladi.** Guruh bosqichi tugaguncha saytdagi setkada jamoa nomlari emas, o‘rinlar turadi (masalan, «A guruhi g‘olibi — B guruhi 2-o‘rni») — xuddi Jahon chempionatidagidek. Jadval oxirgi turgacha o‘zgarishi mumkin, shuning uchun haqiqiy setka faqat **barcha** guruh o‘yinlari tugagach tuziladi. Oxirgi guruh o‘yini natijasi saqlanishi bilan tizim guruhdan chiqqanlarni aniqlaydi, setkani tuzadi va raqiblarni belgilaydi:
    - 4 jamoali guruhdan 1- va 2-o‘rin, 5 jamoali guruhdan 1-, 2- va 3-o‘rin chiqadi (o‘zgartirish: **Sozlamalar → Guruhdan pley-offga chiqadiganlar**).
    - Chiqqanlar soni setkaga to‘g‘ri kelmasa (masalan, 20 ta), eng kuchlilar to‘g‘ridan-to‘g‘ri 1/8 finalga chiqadi, qolganlari **saralash o‘yinlari**da bo‘sh joylar uchun o‘ynaydi.
    - Bir guruhdan chiqqan jamoalar imkon qadar birinchi o‘yinda uchrashmaydi.
@@ -100,7 +105,23 @@ Stadionda turib gollarni telefondan kiritish uchun **@payariq_OltinLiga_bot** bo
 
 Har bir amal saytda **darhol** ko‘rinadi: o‘yin sahifasini ochib turgan muxlislarda «GOL!» xabari chiqadi, hisob o‘zi yangilanadi. Tugma ikki marta bosilsa ham gol bir marta yoziladi. Bot orqali qilingan har bir amal «O‘zgarishlar tarixi»da «(Telegram)» belgisi bilan turadi.
 
-Bir bo‘lim davomiyligi (daqiqa hisobi uchun) **Sozlamalar → Bir bo‘lim davomiyligi**da o‘zgartiriladi (standart 25 daqiqa).
+Bir bo‘lim davomiyligi (daqiqa hisobi uchun) **Sozlamalar → Bir bo‘lim davomiyligi**da o‘zgartiriladi (standart 20 daqiqa — o‘yin 2 × 20).
+
+### Ramziy jamoa
+
+Tur o‘yinlarining hammasi yakunlangach, **Ramziy jamoa** bo‘limida turning eng yaxshi 5 futbolchisi tanlanadi: darvozabon, himoyachi, ikki yarim himoyachi va hujumchi.
+
+1. **Tur** ro‘yxatidan turni tanlang. Hali tugamagan turlar ro‘yxatda o‘chiq turadi va yonida nechta o‘yin yakunlangani yoziladi. Pley-off bosqichlari ham shu yerda; ular uchun ramziy jamoa ixtiyoriy.
+2. Maydondagi o‘rinni bosing (masalan, **+ Darvozabon**). O‘ngda (telefonda — pastdan ochiladigan oynada) jamoalar bo‘yicha futbolchilar chiqadi: jamoaning shu turdagi natijasi, har bir futbolchining gollari (to‘p belgilari bilan), uzatmalari, darvozabonda esa quruq o‘yin yoki nechta gol o‘tkazgani. Bularning hammasi kiritilgan natijalardan olinadi, qo‘lda yozilmaydi.
+3. Ro‘yxat odatda shu pozitsiyadagi va turda maydonga tushgan futbolchilarni ko‘rsatadi. Boshqasini qo‘ymoqchi bo‘lsangiz, **Faqat darvozabonlar** yoki **…da o‘ynaganlar** filtrini o‘chiring. Ism, jamoa yoki raqam bo‘yicha qidirish ham bor.
+4. Futbolchini bosing — u maydonga joylashadi. Shu yerda **Rasm yuklash** tugmasi bor: rasm yuklansa, maydonda odamcha belgisi o‘rniga futbolchining rasmi chiqadi. Rasm futbolchining o‘zida saqlanadi, keyingi turlarda ham chiqadi. **Maydondan olish** — o‘rinni bo‘shatadi.
+5. **Avtomatik taklif** bo‘sh o‘rinlarni turning natijalari bo‘yicha to‘ldiradi (siz qo‘ygan futbolchilar o‘zgarmaydi). Taklifni tekshirib, kerak bo‘lsa almashtiring.
+6. **Qoralama saqlash** — saytda ko‘rinmaydi, keyin davom ettirish mumkin. **E’lon qilish (5/5)** — 5 o‘rin to‘lgach ochiladi va ramziy jamoa saytga chiqadi.
+7. E’lon qilingandan keyin ham o‘zgartirish mumkin: futbolchini almashtiring va **O‘zgarishlarni e’lon qilish**ni bosing. **Saytdan olish** jamoani qoralamaga qaytaradi, **O‘chirish** uni butunlay o‘chiradi (futbolchilar va rasmlar o‘chmaydi).
+
+Tanlangan tur manzil satrida saqlanadi: sahifani yangilasangiz ham o‘sha tur ochiladi. Ramziy jamoada turgan futbolchini o‘chirib bo‘lmaydi; avval uni ramziy jamoadan almashtiring.
+
+**Saytda.** E’lon qilingan ramziy jamoalar muxlislar uchun **Ramziy jamoa** bo‘limida (yuqori menyuda) saqlanib turadi: eng oxirgi tur birinchi, yuqoridagi tugmalar bilan oldingi turlarni ochish mumkin. Bosh sahifada ham oxirgi turning ramziy jamoasi chiqadi. **Rasmni yuklab olish** tugmasi Telegram va Instagram uchun 1080×1350 rasm tayyorlaydi (maydon, futbolchilar rasmi yoki odamcha belgisi, ism, jamoa, gollar to‘p belgilari bilan). **Ulashish** va **Matnni nusxalash** ham bor; fayl nomi `payariq-ramziy-jamoa-3-tur-2026.png` ko‘rinishida bo‘ladi. Sayt kirill yozuvida bo‘lsa, rasm va post matni ham kirillcha chiqadi.
 
 ## 5. Yangiliklar va homiylar
 
@@ -111,7 +132,9 @@ Bir bo‘lim davomiyligi (daqiqa hisobi uchun) **Sozlamalar → Bir bo‘lim dav
 
 - **Liga nizomi**: ochkolar, bir yoki ikki davrali tizim, teng ochkoda o‘rinni aniqlash tartibi va **Guruhdan pley-offga chiqadiganlar** (3, 4, 5 va 6 jamoali guruhlar uchun alohida). O‘zgartirilsa, jadval va setka darhol qayta hisoblanadi (pley-off o‘yinlari boshlanmagan bo‘lsa). Muxlislar uchun hammasi saytdagi **Musobaqa nizomi** sahifasida avtomatik tushuntiriladi.
 - **Ochko o‘zgarishlari**: jarima yoki bonus ochko (masalan, −3). Sababi saytdagi jadval ostida ko‘rinadi.
-- **Liga ma’lumotlari** (bosh tashkilotchi): nomi, hududi, aloqa telefoni, Telegram.
+- **Liga ma’lumotlari** (bosh tashkilotchi): nomi, hududi, murojaat uchun telefon va Telegram, **Liga haqida** matni va ijtimoiy tarmoqlar (Telegram kanal, Instagram, YouTube).
+  - **Liga haqida** matni saytdagi «Liga haqida» sahifasida bo‘limlar bilan, birinchi xatboshisi esa bosh sahifadagi «Chempionat haqida» blokida ko‘rinadi. Yozish qoidasi: `## Sarlavha`, `- ro‘yxat`, `1. raqamli ro‘yxat`, `**qalin**`, bo‘sh qator — yangi xatboshi.
+  - Ijtimoiy tarmoq havolasini istalgan ko‘rinishda kiritish mumkin (`@kanal`, `t.me/kanal` yoki to‘liq havola) — sayt uni o‘zi to‘g‘ri shaklga keltiradi va har sahifa pastida, «Liga haqida» va bosh sahifada logotip bilan ko‘rsatadi. Bo‘sh qoldirilgan tarmoq ko‘rsatilmaydi.
 - **Maydonlar**: o‘yin o‘tkaziladigan stadion. Barcha o‘yinlar **Mirzacho‘l Birlik Arena**da o‘tadi; u birinchi o‘rnatishda avtomatik qo‘shiladi. Bu yerda nomini o‘zgartirish yoki manzil (qishloq) qo‘shish mumkin.
 - **Foydalanuvchilar** (bosh tashkilotchi): yordamchilarni boshqarish (pastga qarang).
 - **O‘zgarishlar tarixi**: kim, qachon, nimani o‘zgartirgani.
@@ -135,6 +158,14 @@ O‘z akkauntingizni o‘chira olmaysiz va rolingizni pasaytira olmaysiz. Tizimd
 Chap menyuning pastidagi ismingizni bosing (**Hisobim** sahifasi). Joriy parolni va yangi parolni ikki marta kiriting.
 
 Parol talablari: kamida 10 belgi, harf va raqamlar aralash, ichida login bo‘lmasin.
+
+## Lotin va kirill yozuvi
+
+Sayt tepasida (tun/kun rejimi tugmasi yonida) **Кирилл** tugmasi bor — bosilsa, butun sayt kirillchaga o‘tadi: menyular, jadval, jamoa va futbolchi nomlari, yangiliklar va admin panel. Qaytish — **Lotin** tugmasi. Tanlov shu telefon yoki kompyuterda eslab qolinadi.
+
+- Ma’lumotlar bazada lotinchada saqlanadi — siz odatdagidek lotincha kiritasiz, kirillcha faqat ekranda ko‘rsatiladi.
+- Kirill rejimida tayyorlangan o‘yin rasmi va post matni ham kirillcha bo‘ladi.
+- Qidiruv ikkala yozuvda ishlaydi: «Лочин» deb yozsangiz ham «Lochin» topiladi.
 
 ## 9. Ko‘p beriladigan savollar
 

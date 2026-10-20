@@ -467,9 +467,12 @@ export function createSeed(now: Date = new Date()): LeagueDb {
       shortName: "Oltin Liga",
       region: "Payariq tumani, Samarqand viloyati",
       about:
-        "Payariq Oltin Ligasi — tuman qishloqlari jamoalari ishtirokidagi havaskorlar futbol musobaqasi. Liga yoshlarni sportga jalb qilish, qishloqlar o‘rtasida do‘stlikni mustahkamlash va har mavsumda eng kuchli jamoani aniqlash maqsadida o‘tkaziladi.",
+        "**Oltin Liga** — qishloq va mahallalar o‘rtasidagi havaskorlar mini-futbol chempionati. Unda Payariq va boshqa tumanlardan kelgan qishloq va mahalla terma jamoalari ishtirok etadi.\n\n## Qayerda o‘tadi?\n- Barcha o‘yinlar **Mirzacho‘l Birlik Arena** stadionida o‘tadi.\n- Har bir o‘yin 2 × 20 daqiqa.",
       contactPhone: "",
       telegram: "",
+      telegramChannel: "",
+      instagram: "",
+      youtube: "",
     },
     seasons,
     teams,

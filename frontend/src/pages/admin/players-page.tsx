@@ -19,6 +19,7 @@ import type { Position } from "@/domain/types"
 import { useSeason } from "@/hooks/use-season"
 import { POSITION_LABEL } from "@/lib/format"
 import { checkDrafts, emptyDraft, toRowInputs, type PlayerDraft } from "@/lib/player-list"
+import { searchKey } from "@/lib/translit"
 
 const NONE = "__none__"
 const PAGE = 50
@@ -233,10 +234,10 @@ export default function AdminPlayersPage() {
     [teamRows],
   )
   const rows = useMemo(() => {
-    const q = query.trim().toLowerCase()
+    const q = searchKey(query)
     return (data ?? [])
       .filter((p) => (team === "all" ? true : team === "none" ? !p.seasonTeamId : p.seasonTeamId === team))
-      .filter((p) => !q || `${p.firstName} ${p.lastName}`.toLowerCase().includes(q) || p.phone?.replace(/\s/g, "").includes(q.replace(/\s/g, "")))
+      .filter((p) => !q || searchKey(`${p.firstName} ${p.lastName}`).includes(q) || p.phone?.replace(/\s/g, "").includes(query.trim().replace(/\s/g, "")))
   }, [data, query, team])
 
   return (

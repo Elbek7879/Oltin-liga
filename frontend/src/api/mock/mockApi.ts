@@ -4,7 +4,7 @@
  * HTTP versiyasi bilan almashtiriladi — sahifalar kodi o'zgarmaydi.
  */
 import { checkDraw, GROUP_LETTERS } from "@/domain/draw"
-import { advancementUpdates, createBracket, firstRoundFor, groupFinishes, playoffPlan, qualifiersFor, ROUND_SEQUENCE, seedLotsFrom } from "@/domain/playoff"
+import { advancementUpdates, createBracket, firstRoundFor, groupFinishes, playoffPlan, qualifiersFor, ROUND_LABELS, ROUND_SEQUENCE, seedLotsFrom } from "@/domain/playoff"
 import { addDays, placeholderKickoff, primaryVenueId, roundRobin, toLocalIso } from "@/domain/schedule"
 import { computeStandings } from "@/domain/standings"
 import { computePlayerStats, computeTeamDiscipline, headToHead, topScorers } from "@/domain/stats"
@@ -34,6 +34,7 @@ import {
 import { DB_VERSION, type LeagueDb } from "./db"
 import { defaultSeasonRules as defaultRules } from "../defaults"
 import { createSeed } from "./seed"
+import { normalizeSocial, type SocialField } from "@/lib/social"
 
 const STORAGE_KEY = "pol-mock-db"
 const SESSION_KEY = "pol-admin-session"
@@ -130,6 +131,14 @@ function season(db: LeagueDb, seasonId: ID): Season {
   return db.seasons.find((s) => s.id === seasonId) ?? fail("Mavsum topilmadi.")
 }
 
+/** Qur'a tashlangach mavsum ishtirokchilari qulflanadi (backenddagi qoida bilan bir xil) */
+function requireTeamListOpen(db: LeagueDb, seasonId: ID, action: string) {
+  if (!db.groups.some((g) => g.seasonId === seasonId)) return
+  fail(
+    `Qur’a tashlangan — guruhlar shakllangan, bu mavsumga ${action} bo‘lmaydi. Jamoa esdan chiqqan bo‘lsa va hali birorta natija kiritilmagan bo‘lsa, «Guruhlar» bo‘limida qur’ani bekor qiling.`,
+  )
+}
+
 function requireEditable(db: LeagueDb, seasonId: ID) {
   const s = season(db, seasonId)
   if (s.status === "FINISHED") fail(`${s.name} yakunlangan va arxivga qulflangan. Tarixiy ma’lumotlarni o‘zgartirib bo‘lmaydi.`)
@@ -154,7 +163,7 @@ function teamView(db: LeagueDb, st: SeasonTeam): TeamView {
 
 function publicPlayer(db: LeagueDb, playerId: ID): PublicPlayer {
   const p = db.players.find((x) => x.id === playerId)!
-  return { id: p.id, firstName: p.firstName, lastName: p.lastName, position: p.position, birthYear: p.birthYear }
+  return { id: p.id, firstName: p.firstName, lastName: p.lastName, position: p.position, birthYear: p.birthYear, photoUrl: p.photoUrl ?? null }
 }
 
 function stName(db: LeagueDb, seasonTeamId: ID | null | undefined) {
@@ -363,6 +372,7 @@ function buildBundle(db: LeagueDb, seasonId: ID): SeasonBundle {
     awards: db.awards.filter((a) => a.seasonId === seasonId),
     adjustments: db.adjustments.filter((a) => a.seasonId === seasonId),
     lots: (db.lots ?? []).filter((l) => l.seasonId === seasonId).map((l) => ({ scope: l.scope, order: l.order })),
+    roundTeams: (db.roundTeams ?? []).filter((t) => t.seasonId === seasonId && t.published).map(({ seasonId: _s, ...t }) => t),
   }
 }
 
@@ -430,7 +440,7 @@ function applyAdvancement(db: LeagueDb, match: Match) {
   }
 }
 
-function assertMatchInput(db: LeagueDb, seasonId: ID, input: MatchInput) {
+function assertMatchInput(db: LeagueDb, seasonId: ID, input: MatchInput, selfId: ID | null = null) {
   if (!input.kickoff || Number.isNaN(Date.parse(input.kickoff))) fail("O‘yin sanasi va vaqtini kiriting.")
   if (input.homeId && input.awayId && input.homeId === input.awayId) fail("Jamoa o‘zi bilan o‘ynay olmaydi. Ikkinchi jamoani o‘zgartiring.")
   const ids = new Set(db.seasonTeams.filter((s) => s.seasonId === seasonId).map((s) => s.id))
@@ -441,6 +451,14 @@ function assertMatchInput(db: LeagueDb, seasonId: ID, input: MatchInput) {
     if (!g) fail("Guruhni tanlang.")
     if (!g!.seasonTeamIds.includes(input.homeId!) || !g!.seasonTeamIds.includes(input.awayId!)) {
       fail(`Ikkala jamoa ham ${g!.name} guruhida bo‘lishi kerak.`)
+    }
+    // Guruhda har juftlik nizomdagidek uchrashadi: bir davrali — bir marta, ikki davrali — ikki marta (bekor qilingani hisobga olinmaydi)
+    const legs = season(db, seasonId).rules.legs
+    const pair = [input.homeId, input.awayId].sort().join("|")
+    const same = db.matches.filter((x) => x.id !== selfId && x.groupId === g!.id && x.status !== "CANCELLED" && [x.homeId, x.awayId].sort().join("|") === pair).length
+    if (same >= legs) {
+      const name = (id: ID | null) => db.seasonTeams.find((t) => t.id === id)?.name ?? "Jamoa"
+      fail(`${name(input.homeId)} va ${name(input.awayId)} ${g!.name} guruhida allaqachon ${legs === 2 ? "ikki marta" : "bir marta"} o‘ynaydi — nizom bo‘yicha boshqa o‘yin qo‘shib bo‘lmaydi. Sanani o‘zgartirish kerak bo‘lsa, o‘sha o‘yinni tahrirlang.`)
     }
   }
   if (input.status === "FINISHED" || input.status === "LIVE") {
@@ -847,6 +865,7 @@ export const mockApi: LeagueApi = {
     requireAdmin()
     const db = load()
     validateTeam(db, input)
+    if (addToSeasonId) requireTeamListOpen(db, addToSeasonId, "yangi jamoa qo‘shib")
     const team: Team = { id: newId("t"), ...trimTeam(input), founded: input.founded ?? undefined, active: true }
     db.teams.push(team)
     if (addToSeasonId) {
@@ -899,6 +918,7 @@ export const mockApi: LeagueApi = {
     requireEditable(db, seasonId)
     const team = db.teams.find((t) => t.id === teamId) ?? fail("Jamoa topilmadi.")
     const st = db.seasonTeams.find((x) => x.seasonId === seasonId && x.teamId === teamId)
+    if (inSeason !== Boolean(st)) requireTeamListOpen(db, seasonId, inSeason ? "yangi jamoa qo‘shib" : "jamoani mavsumdan chiqarib")
     if (inSeason && !st) {
       db.seasonTeams.push({ id: newId("st"), seasonId, teamId, name: team.name, shortName: team.shortName })
       audit(db, "Jamoa", `«${team.name}» mavsumga qo‘shildi`)
@@ -1035,6 +1055,9 @@ export const mockApi: LeagueApi = {
     if (db.events.some((e) => e.playerId === playerId || e.assistId === playerId) || db.appearances.some((a) => a.playerId === playerId)) {
       fail("Bu futbolchining o‘yinlar statistikasi bor, uni o‘chirib bo‘lmaydi. Uning o‘rniga jamoa tarkibidan chiqaring.")
     }
+    if ((db.roundTeams ?? []).some((t) => t.slots.some((s) => s.playerId === playerId))) {
+      fail("Bu futbolchi ramziy jamoada turibdi — o‘chirishdan oldin uni ramziy jamoada boshqa futbolchiga almashtiring.")
+    }
     db.players = db.players.filter((x) => x.id !== playerId)
     db.rosters = db.rosters.filter((r) => r.playerId !== playerId)
     audit(db, "Futbolchi", `${p.firstName} ${p.lastName} o‘chirildi`)
@@ -1068,6 +1091,23 @@ export const mockApi: LeagueApi = {
     const fixtures = createFixtures(db, s, saved)
     syncPlayoff(db, seasonId)
     audit(db, "Qur’a", `${s.name}: ${groups.length} ta guruh tasdiqlandi, ${fixtures} ta juftlik tuzildi${removed ? `, ${removed} ta eski o‘yin o‘chirildi` : ""}`)
+    save()
+    return delay(undefined)
+  },
+
+  async resetGroups(seasonId) {
+    requireAdmin()
+    const db = load()
+    const s = requireEditable(db, seasonId)
+    const groups = db.groups.filter((g) => g.seasonId === seasonId)
+    if (groups.length === 0) fail("Bu mavsumda hali qur’a tashlanmagan.")
+    const seasonMatchList = db.matches.filter((m) => m.seasonId === seasonId)
+    if (seasonMatchList.some((m) => m.status === "FINISHED" || m.status === "LIVE")) fail("Natija kiritilgan — qur’ani endi bekor qilib bo‘lmaydi.")
+    const removed = new Set(seasonMatchList.filter((m) => m.stage === "GROUP").map((m) => m.id))
+    db.matches = db.matches.filter((m) => !removed.has(m.id))
+    db.groups = db.groups.filter((g) => g.seasonId !== seasonId)
+    syncPlayoff(db, seasonId)
+    audit(db, "Qur’a", `${s.name}: qur’a bekor qilindi — ${groups.length} ta guruh va ${removed.size} ta juftlik o‘chirildi`)
     save()
     return delay(undefined)
   },
@@ -1111,7 +1151,7 @@ export const mockApi: LeagueApi = {
     if (hasResult && (input.homeId !== m.homeId || input.awayId !== m.awayId)) {
       fail("Natijasi bor o‘yinning jamoalarini o‘zgartirib bo‘lmaydi.")
     }
-    if (!hasResult) assertMatchInput(db, m.seasonId, input)
+    if (!hasResult) assertMatchInput(db, m.seasonId, input, m.id)
     else if (!input.kickoff || Number.isNaN(Date.parse(input.kickoff))) fail("O‘yin sanasi va vaqtini kiriting.")
     const moved = m.kickoff !== input.kickoff
     Object.assign(m, {
@@ -1142,6 +1182,14 @@ export const mockApi: LeagueApi = {
     requireEditable(db, m.seasonId)
     if (m.status === "FINISHED" || m.status === "LIVE") fail("Natijasi kiritilgan o‘yinni o‘chirib bo‘lmaydi. Kerak bo‘lsa, uni «Bekor qilingan» deb belgilang.")
     if (m.stage === "PLAYOFF") fail("Pley-off o‘yinlari sxema orqali boshqariladi. «Pley-off» bo‘limidan foydalaning.")
+    if (m.stage === "GROUP" && m.groupId && m.homeId && m.awayId) {
+      // Davra tizimi buzilmasin: juftlikning yagona o'yini o'chirilmaydi (backenddagi qoida bilan bir xil)
+      const pair = [m.homeId, m.awayId].sort().join("|")
+      const others = db.matches.filter((x) => x.id !== m.id && x.groupId === m.groupId && [x.homeId, x.awayId].sort().join("|") === pair).length
+      if (others < season(db, m.seasonId).rules.legs) {
+        fail("Bu juftlikning guruhdagi o‘yini — uni o‘chirsangiz, jamoalar o‘zaro o‘ynamay qoladi va jadval to‘liq bo‘lmaydi. O‘yin o‘tkazilmasa, uni «Bekor qilingan» deb belgilang yoki natijalar bo‘limida texnik natija kiriting.")
+      }
+    }
     db.matches = db.matches.filter((x) => x.id !== matchId)
     db.events = db.events.filter((e) => e.matchId !== matchId)
     audit(db, "O‘yin", `${stName(db, m.homeId)} — ${stName(db, m.awayId)} o‘yini o‘chirildi`)
@@ -1444,7 +1492,14 @@ export const mockApi: LeagueApi = {
     requireAdmin()
     const db = load()
     if (!settings.name.trim()) fail("Liga nomini kiriting.")
-    db.settings = { ...settings, name: settings.name.trim() }
+    const social = (field: SocialField) => {
+      try {
+        return normalizeSocial(field, settings[field])
+      } catch (e) {
+        return fail((e as Error).message)
+      }
+    }
+    db.settings = { ...settings, name: settings.name.trim(), telegramChannel: social("telegramChannel"), instagram: social("instagram"), youtube: social("youtube") }
     audit(db, "Sozlamalar", "Liga ma’lumotlari yangilandi")
     save()
     return delay(db.settings)
@@ -1475,6 +1530,77 @@ export const mockApi: LeagueApi = {
     const db = load()
     if (db.matches.some((m) => m.venueId === id)) fail("Bu maydonda o‘yinlar belgilangan, uni o‘chirib bo‘lmaydi.")
     db.venues = db.venues.filter((v) => v.id !== id)
+    save()
+    return delay(undefined)
+  },
+
+  async listRoundTeams(seasonId) {
+    requireAdmin()
+    const db = load()
+    season(db, seasonId)
+    return delay((db.roundTeams ?? []).filter((t) => t.seasonId === seasonId).map(({ seasonId: _s, ...t }) => t))
+  },
+
+  async saveRoundTeam(seasonId, input) {
+    requireAdmin()
+    const db = load()
+    requireEditable(db, seasonId)
+    const round = input.stage === "GROUP" ? (input.round ?? null) : null
+    const playoffRound = input.stage === "PLAYOFF" ? (input.playoffRound ?? null) : null
+    if (input.stage === "GROUP" && !round) fail("Turni tanlang.")
+    if (input.stage === "PLAYOFF" && !playoffRound) fail("Pley-off bosqichini tanlang.")
+    const title = input.stage === "GROUP" ? `${round}-tur` : ROUND_LABELS[playoffRound!]
+    const list = seasonMatches(db, seasonId).filter((m) => m.stage === input.stage && (input.stage === "GROUP" ? m.round === round : m.playoffRound === playoffRound) && m.status !== "CANCELLED")
+    if (list.length === 0) fail(`${title} o‘yinlari topilmadi.`)
+    if (list.some((m) => m.status !== "FINISHED")) fail(`${title} hali tugamagan — ramziy jamoa barcha o‘yinlar yakunlangach tanlanadi.`)
+    const teamOf = new Map(db.rosters.filter((r) => r.seasonId === seasonId).map((r) => [r.playerId, r.seasonTeamId]))
+    const keys = ["GK", "DF", "MF_L", "MF_R", "FW"]
+    const usedSlots = new Set<string>()
+    const usedPlayers = new Set<string>()
+    const slots = input.slots.map((s) => {
+      if (!keys.includes(s.slot)) fail(`Noma’lum o‘rin: ${s.slot}.`)
+      if (usedSlots.has(s.slot)) fail("Bir o‘ringa ikki futbolchi qo‘yib bo‘lmaydi.")
+      if (usedPlayers.has(s.playerId)) fail("Bir futbolchi ramziy jamoada faqat bir marta bo‘ladi.")
+      usedSlots.add(s.slot)
+      usedPlayers.add(s.playerId)
+      const seasonTeamId = teamOf.get(s.playerId) ?? fail("Tanlangan futbolchi bu mavsumda biror jamoa tarkibida emas.")
+      return { slot: s.slot, playerId: s.playerId, seasonTeamId }
+    })
+    if (input.publish && slots.length !== keys.length) fail(`E’lon qilish uchun 5 ta o‘rinning hammasiga futbolchi qo‘ying (hozir ${slots.length} ta).`)
+    slots.sort((a, b) => keys.indexOf(a.slot) - keys.indexOf(b.slot))
+    db.roundTeams = db.roundTeams ?? []
+    let t = db.roundTeams.find((x) => x.seasonId === seasonId && x.stage === input.stage && x.round === round && x.playoffRound === playoffRound)
+    const wasPublished = Boolean(t?.published)
+    if (!t) {
+      t = { id: newId("rt"), seasonId, stage: input.stage, round, playoffRound, published: false, publishedAt: null, slots: [] }
+      db.roundTeams.push(t)
+    }
+    t.slots = slots
+    t.published = input.publish
+    t.publishedAt = input.publish ? (wasPublished ? t.publishedAt : new Date().toISOString()) : null
+    audit(db, "Ramziy jamoa", `${title} ramziy jamoasi ${t.published ? (wasPublished ? "yangilandi" : "e’lon qilindi") : "qoralama sifatida saqlandi"}`)
+    save()
+    const { seasonId: _s, ...result } = t
+    return delay(result)
+  },
+
+  async deleteRoundTeam(id) {
+    requireAdmin()
+    const db = load()
+    const t = (db.roundTeams ?? []).find((x) => x.id === id) ?? fail("Ramziy jamoa topilmadi.")
+    requireEditable(db, t.seasonId)
+    db.roundTeams = (db.roundTeams ?? []).filter((x) => x.id !== id)
+    audit(db, "Ramziy jamoa", "Ramziy jamoa o‘chirildi")
+    save()
+    return delay(undefined)
+  },
+
+  async setPlayerPhoto(playerId, photoUrl) {
+    requireAdmin()
+    const db = load()
+    const p = db.players.find((x) => x.id === playerId) ?? fail("Futbolchi topilmadi.")
+    p.photoUrl = photoUrl || null
+    audit(db, "Futbolchi", `${p.firstName} ${p.lastName} ${photoUrl ? "rasmi yangilandi" : "rasmi olib tashlandi"}`)
     save()
     return delay(undefined)
   },

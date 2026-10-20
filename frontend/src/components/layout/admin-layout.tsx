@@ -14,6 +14,7 @@ import {
   Newspaper,
   Settings,
   Shield,
+  Shirt,
   Trophy,
   UserRound,
 } from "lucide-react"
@@ -30,7 +31,7 @@ import { useSeason } from "@/hooks/use-season"
 import { useLiveUpdates } from "@/hooks/use-live-updates"
 import { canManageCompetition, canOpen, ROLE_LABELS } from "@/lib/roles"
 import { cn } from "@/lib/utils"
-import { LeagueMark, SeasonSelect, ThemeToggle } from "./brand"
+import { LeagueMark, ScriptToggle, SeasonSelect, ThemeToggle } from "./brand"
 import { ScrollToTop } from "./scroll-to-top"
 
 const NAV_GROUPS = [
@@ -47,6 +48,7 @@ const NAV_GROUPS = [
       { to: "/admin/jamoalar", label: "Jamoalar", icon: Shield },
       { to: "/admin/futbolchilar", label: "Futbolchilar", icon: UserRound },
       { to: "/admin/pley-off", label: "Pley-off", icon: Network },
+      { to: "/admin/ramziy-jamoa", label: "Ramziy jamoa", icon: Shirt },
       { to: "/admin/mavsumlar", label: "Mavsumlar", icon: Trophy },
     ],
   },
@@ -131,6 +133,7 @@ function NoAccess({ role }: { role: AdminRole }) {
   return (
     <div className="mx-auto max-w-xl">
       <EmptyState
+        pageTitle
         icon={Lock}
         title="Bu bo‘lim sizning rolingiz uchun yopiq"
         description={`Siz «${ROLE_LABELS[role]}» rolidasiz. Boshqa bo‘limlar kerak bo‘lsa, bosh tashkilotchiga murojaat qiling.`}
@@ -149,13 +152,14 @@ function FirstSeasonPrompt({ role }: { role: AdminRole }) {
   if (!canManageCompetition(role)) {
     return (
       <div className="mx-auto max-w-xl">
-        <EmptyState icon={Trophy} title="Mavsum hali ochilmagan" description="Bosh tashkilotchi mavsumni ochgach, bu bo‘limda ishlay olasiz." />
+        <EmptyState pageTitle icon={Trophy} title="Mavsum hali ochilmagan" description="Bosh tashkilotchi mavsumni ochgach, bu bo‘limda ishlay olasiz." />
       </div>
     )
   }
   return (
     <div className="mx-auto max-w-xl">
       <EmptyState
+        pageTitle
         icon={Trophy}
         title="Birinchi mavsumni yarating"
         description="Jamoalar, qur’a, o‘yinlar va natijalar mavsumga bog‘lanadi. Avval mavsum oching — keyin jamoalarni qo‘shasiz."
@@ -274,6 +278,7 @@ export function AdminLayout() {
                   Saytni ko‘rish
                 </Link>
               </Button>
+              <ScriptToggle className="lg:text-foreground lg:hover:bg-muted lg:hover:text-foreground" />
               <ThemeToggle className="lg:text-foreground lg:hover:bg-muted lg:hover:text-foreground" />
             </div>
           </div>

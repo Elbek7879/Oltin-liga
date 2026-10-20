@@ -269,6 +269,79 @@ class SeasonFlowIntegrationTest extends IntegrationTestBase {
         doDelete("/api/admin/teams/" + teamId).andExpect(status().isConflict());
         perform(put("/api/admin/seasons/" + seasonId + "/groups"), Map.of("groups", List.of(Map.of("name", "A", "teamIds", seasonTeams))), asAdmin())
                 .andExpect(status().isConflict());
+        // Natija kiritilgach qur'ani bekor qilib ham bo'lmaydi
+        doDelete("/api/admin/seasons/" + seasonId + "/groups").andExpect(status().isConflict());
+        assertThat(bundle().get("groups")).hasSize(2);
+    }
+
+    @Test
+    @DisplayName("bir davrali guruhda juftlik ikkinchi marta qo'shilmaydi (qo'lda qo'shish va tahrirlashda ham); bekor qilingan o'yin o'rniga qo'shish mumkin")
+    void noDuplicatePairsInGroup() throws Exception {
+        setUpSeasonWithGroups();
+        JsonNode b = bundle();
+        JsonNode first = b.get("matches").get(0);
+        Map<String, Object> again = new java.util.HashMap<>(Map.of("stage", "GROUP", "groupId", first.get("groupId").asText(), "round", 4,
+                "homeId", first.get("awayId").asText(), "awayId", first.get("homeId").asText(), "kickoff", "2026-06-20T18:00:00+05:00", "status", "SCHEDULED"));
+        var create = org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/admin/seasons/" + seasonId + "/matches");
+        perform(create, again, asAdmin())
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("allaqachon bir marta o‘ynaydi")));
+
+        // Boshqa o'yinning jamoalarini shu juftlikka o'zgartirib ham bo'lmaydi
+        JsonNode other = null;
+        for (JsonNode m : b.get("matches")) {
+            if (m.get("groupId").asText().equals(first.get("groupId").asText()) && !m.get("id").asText().equals(first.get("id").asText())) other = m;
+        }
+        Map<String, Object> edit = new java.util.HashMap<>(again);
+        edit.put("round", other.get("round").asInt());
+        perform(put("/api/admin/matches/" + other.get("id").asText()), edit, asAdmin()).andExpect(status().isConflict());
+        // Juftlikning yagona o'yinini o'chirib bo'lmaydi — aks holda jamoalar o'zaro o'ynamay qoladi
+        doDelete("/api/admin/matches/" + other.get("id").asText())
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Bekor qilingan")));
+
+        // O'yinni o'zini tahrirlash (sana o'zgarishi) — takror hisoblanmaydi
+        Map<String, Object> self = new java.util.HashMap<>(again);
+        self.put("homeId", first.get("homeId").asText());
+        self.put("awayId", first.get("awayId").asText());
+        self.put("round", first.get("round").asInt());
+        perform(put("/api/admin/matches/" + first.get("id").asText()), self, asAdmin()).andExpect(status().isOk());
+
+        // Bekor qilingan o'yin o'rniga yangisi qo'shiladi
+        self.put("status", "CANCELLED");
+        perform(put("/api/admin/matches/" + first.get("id").asText()), self, asAdmin()).andExpect(status().isOk());
+        perform(create, again, asAdmin()).andExpect(status().isOk());
+        assertThat(bundle().get("matches")).hasSize(13);
+    }
+
+    @Test
+    @DisplayName("qur'adan keyin mavsumga jamoa qo'shib yoki chiqarib bo'lmaydi; natija yo'q bo'lsa qur'ani bekor qilib, jamoa qo'shiladi")
+    void teamListLockedAfterDraw() throws Exception {
+        setUpSeasonWithGroups();
+        Map<String, Object> late = Map.of("name", "Kechikkan jamoa", "shortName", "KEC", "village", "Qishloq", "primaryColor", "#145A3A", "secondaryColor", "#E2BF4F");
+        var post = org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/admin/teams?addToSeasonId=" + seasonId);
+        perform(post, late, asAdmin())
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Qur’a tashlangan")));
+        // Mavsumga qo'shilmagan jamoa yaratilmaydi ham (yarim yo'lda qolmaydi)
+        assertThat(getJson("/api/admin/seasons/" + seasonId + "/teams")).hasSize(8);
+
+        // Keyingi mavsum uchun ro'yxatga saqlash mumkin, lekin bu mavsumga qo'shib bo'lmaydi
+        String lateId = postJson("/api/admin/teams", late).get("id").asText();
+        perform(put("/api/admin/seasons/" + seasonId + "/teams/" + lateId), Map.of("inSeason", true), asAdmin()).andExpect(status().isConflict());
+        String member = bundle().get("teams").get(0).get("teamId").asText();
+        perform(put("/api/admin/seasons/" + seasonId + "/teams/" + member), Map.of("inSeason", false), asAdmin()).andExpect(status().isConflict());
+
+        // Qur'ani bekor qilish: guruhlar va juftliklar (sanalari bilan) o'chadi, jamoalar mavsumda qoladi
+        doDelete("/api/admin/seasons/" + seasonId + "/groups").andExpect(status().isNoContent());
+        JsonNode reset = bundle();
+        assertThat(reset.get("groups")).isEmpty();
+        assertThat(reset.get("matches")).isEmpty();
+        assertThat(reset.get("teams")).hasSize(8);
+        // Endi esdan chiqqan jamoa qo'shiladi va qur'a qaytadan tashlanadi
+        perform(put("/api/admin/seasons/" + seasonId + "/teams/" + lateId), Map.of("inSeason", true), asAdmin()).andExpect(status().is2xxSuccessful());
+        assertThat(bundle().get("teams")).hasSize(9);
+        doDelete("/api/admin/seasons/" + seasonId + "/groups").andExpect(status().isConflict());
     }
 
     private JsonNode mvcGetPublic(String url) throws Exception {

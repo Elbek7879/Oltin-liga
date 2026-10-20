@@ -1,6 +1,6 @@
 # Payariq Oltin Ligasi
 
-Payariq tumani qishloqlari havaskorlar futbol ligasi uchun veb-platforma:
+Payariq Oltin Ligasi — qishloq va mahallalar o‘rtasidagi havaskor futbol musobaqasi uchun veb-platforma:
 - **ommaviy sayt** — muxlislar uchun, loginsiz;
 - **admin paneli** — tashkilotchilar uchun.
 

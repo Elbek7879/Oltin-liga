@@ -13,7 +13,7 @@ import { TeamCrest } from "@/components/league/team-crest"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
-import { createBracket, ROUND_SEQUENCE, roundLabel, type PlayoffPlan } from "@/domain/playoff"
+import { ROUND_SEQUENCE, createBracket, roundLabel, type PlayoffPlan, withPositionLabels } from "@/domain/playoff"
 import { addDays, primaryVenueId } from "@/domain/schedule"
 import type { PlayoffRoundKey } from "@/domain/types"
 import { useMediaQuery } from "@/hooks/use-media-query"
@@ -140,7 +140,7 @@ export default function AdminPlayoffPage() {
   const projectedMatches = useMemo(() => {
     if (!index || !overview || overview.playoff.length > 0 || overview.plan.error) return []
     let n = 0
-    return createBracket({
+    const bracket = createBracket({
       seasonId: index.bundle.season.id,
       plan: overview.plan,
       thirdPlace: index.bundle.season.rules.thirdPlaceMatch,
@@ -148,6 +148,8 @@ export default function AdminPlayoffPage() {
       newId: () => `projected-${n++}`,
       timeConfirmed: false,
     })
+    // Guruh bosqichi tugamaguncha setkada guruhdagi o'rinlar (jamoalar taxminiy reyting jadvalida)
+    return withPositionLabels(bracket, overview.plan)
   }, [index, overview])
 
   if (isLoading && !index) return <PageSkeleton />

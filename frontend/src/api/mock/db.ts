@@ -1,22 +1,4 @@
-import type {
-  Appearance,
-  AuditEntry,
-  ID,
-  Group,
-  LeagueSettings,
-  Match,
-  MatchEvent,
-  News,
-  Player,
-  PointAdjustment,
-  RosterEntry,
-  Season,
-  SeasonAward,
-  SeasonTeam,
-  Sponsor,
-  Team,
-  Venue,
-} from "@/domain/types"
+import type { Appearance, AuditEntry, Group, ID, LeagueSettings, Match, MatchEvent, News, Player, PointAdjustment, RosterEntry, RoundTeam, Season, SeasonAward, SeasonTeam, Sponsor, Team, Venue } from "@/domain/types"
 import type { UserAccount } from "../types"
 
 /** Namunaviy rejimdagi butun ma'lumotlar bazasi (3-bosqichda PostgreSQL bilan almashtiriladi) */
@@ -41,6 +23,7 @@ export interface LeagueDb {
   audit: AuditEntry[]
   /** Teng holatdagi qur'a natijalari */
   lots?: { seasonId: ID; scope: string; order: ID[] }[]
+  roundTeams?: (RoundTeam & { seasonId: ID })[]
   /** Namunaviy akkauntlar (parollar saqlanmaydi) */
   users?: UserAccount[]
 }

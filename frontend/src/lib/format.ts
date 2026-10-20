@@ -48,6 +48,17 @@ export function dateWords(iso: string) {
   return { weekday: WEEKDAYS[p.weekday], day: p.day, month: MONTHS[p.month], year: p.year }
 }
 
+/** Bir necha kunga cho'zilgan davr (Toshkent vaqti): «16-oktabr», «16–17-oktabr», «30-sentabr – 2-oktabr» */
+export function formatDateRange(isos: string[]) {
+  const keys = [...new Set(isos.map(localDateKey))].sort()
+  if (keys.length === 0) return null
+  const first = localParts(`${keys[0]}T12:00:00+05:00`)
+  const last = localParts(`${keys.at(-1)}T12:00:00+05:00`)
+  if (keys.length === 1) return `${first.day}-${MONTHS[first.month]}`
+  if (first.month === last.month && first.year === last.year) return `${first.day}–${last.day}-${MONTHS[last.month]}`
+  return `${first.day}-${MONTHS[first.month]} – ${last.day}-${MONTHS[last.month]}`
+}
+
 export function formatShortDate(iso: string) {
   const p = localParts(iso)
   return `${p.day} ${MONTHS_SHORT[p.month]}`

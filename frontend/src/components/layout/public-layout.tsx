@@ -12,19 +12,22 @@ import { BookOpen, Archive,
   Network,
   Newspaper,
   Shield,
+  Shirt,
   Trophy,
   UserRound,
 } from "lucide-react"
 import { useState } from "react"
 import { Link, NavLink, Outlet, useLocation } from "react-router"
-import { useSponsors } from "@/api/hooks"
+import { useSettings, useSponsors } from "@/api/hooks"
 import { IS_DEMO_MODE } from "@/api/client"
+import { AboutCard } from "@/components/league/about-card"
+import { SocialLinks } from "@/components/league/social-links"
 import { EmptyState } from "@/components/league/states"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { useSeason } from "@/hooks/use-season"
 import { useLiveUpdates } from "@/hooks/use-live-updates"
 import { cn } from "@/lib/utils"
-import { LeagueMark, Logo, SeasonSelect, ThemeToggle } from "./brand"
+import { LeagueMark, Logo, ScriptToggle, SeasonSelect, ThemeToggle } from "./brand"
 import { ScrollToTop } from "./scroll-to-top"
 
 const MAIN_NAV = [
@@ -34,6 +37,7 @@ const MAIN_NAV = [
   { to: "/pley-off", label: "Pley-off", icon: Network },
   { to: "/jamoalar", label: "Jamoalar", icon: Shield },
   { to: "/statistika", label: "Statistika", icon: ChartColumn },
+  { to: "/ramziy-jamoa", label: "Ramziy jamoa", icon: Shirt },
   { to: "/yangiliklar", label: "Yangiliklar", icon: Newspaper },
 ]
 
@@ -58,15 +62,16 @@ function DesktopNav() {
     <nav aria-label="Asosiy menyu" className="hidden lg:block">
       <ul className="flex items-center gap-0.5">
         {[...MAIN_NAV, { to: "/mavsumlar", label: "Arxiv", icon: Archive }].map((item) => (
-          <li key={item.to}>
+          // 1280px dan tor ekranda «Asosiy» o'rniga logotip bosh sahifaga olib boradi
+          <li key={item.to} className={cn(item.to === "/" && "lg:max-xl:hidden")}>
             <NavLink
               to={item.to}
               end={"end" in item ? item.end : false}
               className={({ isActive }) =>
                 cn(
-                  "relative block rounded-md px-3 py-2 text-sm font-semibold text-band-muted transition-colors hover:text-band-foreground",
+                  "relative block rounded-md px-2 py-2 text-sm font-semibold whitespace-nowrap text-band-muted transition-colors hover:text-band-foreground xl:px-3",
                   isActive &&
-                    "text-band-foreground after:absolute after:inset-x-3 after:-bottom-[13px] after:h-[3px] after:rounded-full after:bg-gold-400",
+                    "text-band-foreground after:absolute after:inset-x-2 after:-bottom-[13px] xl:after:inset-x-3 after:h-[3px] after:rounded-full after:bg-gold-400",
                 )
               }
             >
@@ -201,6 +206,7 @@ function ArchiveBanner() {
 
 function Footer() {
   const { data: sponsors = [] } = useSponsors()
+  const { data: settings } = useSettings()
   return (
     <footer className="mt-12 border-t border-border bg-card pb-20 lg:pb-0">
       {sponsors.length > 0 && (
@@ -230,12 +236,14 @@ function Footer() {
           <LeagueMark className="size-10" />
           <div>
           <p className="font-semibold text-foreground">Payariq Oltin Ligasi</p>
-          <p>Payariq tumani qishloqlari havaskorlar futbol musobaqasi</p>
+          <p>Qishloq va mahallalar o‘rtasida havaskor futbol musobaqasi</p>
           {IS_DEMO_MODE && <p className="mt-1 text-xs">Sayt hozir namunaviy ma’lumotlar bilan ishlamoqda.</p>}
+          <SocialLinks settings={settings} className="mt-3" />
           </div>
         </div>
         <nav aria-label="Pastki havolalar">
           <ul className="flex flex-wrap gap-x-4 gap-y-2">
+            <li><Link className="hover:text-foreground" to="/ramziy-jamoa">Ramziy jamoa</Link></li>
             <li><Link className="hover:text-foreground" to="/nizom">Musobaqa nizomi</Link></li>
             <li><Link className="hover:text-foreground" to="/liga-haqida">Liga haqida</Link></li>
             <li><Link className="hover:text-foreground" to="/homiylar">Homiy bo‘lish</Link></li>
@@ -253,10 +261,12 @@ function NoSeasonYet() {
   return (
     <div className="container-page py-10">
       <EmptyState
+        pageTitle
         icon={Trophy}
         title="Birinchi mavsum tez orada boshlanadi"
         description="Tashkilotchilar mavsumni ochgach, o‘yinlar taqvimi, turnir jadvali va natijalar shu yerda paydo bo‘ladi."
       />
+      <AboutCard className="mx-auto max-w-2xl" />
     </div>
   )
 }
@@ -278,11 +288,12 @@ export function PublicLayout() {
       </a>
       <header className="sticky top-0 z-40 bg-band text-band-foreground shadow-[0_1px_0_var(--band-line)]">
         <div className="container-page flex h-14 items-center gap-3 md:h-16">
-          <Logo />
+          <Logo compact />
           <div className="ml-auto flex items-center gap-1.5 lg:ml-6 lg:flex-1 lg:justify-between">
             <DesktopNav />
             <div className="flex items-center gap-1.5">
-              <SeasonSelect />
+              <SeasonSelect compact />
+              <ScriptToggle />
               <ThemeToggle />
             </div>
           </div>

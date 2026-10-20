@@ -4,7 +4,8 @@ import { Link, useParams } from "react-router"
 import { useTeamProfile } from "@/api/hooks"
 import type { TeamSeasonRecord } from "@/api/types"
 import { MatchRow } from "@/components/league/match-row"
-import { EmptyState, ErrorState, PageSkeleton } from "@/components/league/states"
+import { isNotFound } from "@/api/types"
+import { EmptyState, ErrorState, NotFoundState, PageSkeleton } from "@/components/league/states"
 import { TeamCrest } from "@/components/league/team-crest"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -54,6 +55,8 @@ export default function TeamPage() {
   }, [profile.data, index])
 
   if (profile.isLoading) return <PageSkeleton />
+  if (isNotFound(profile.error))
+    return <NotFoundState icon={Shield} title="Jamoa topilmadi" description="Havola eskirgan yoki jamoa o‘chirilgan bo‘lishi mumkin." backTo="/jamoalar" backLabel="Barcha jamoalar" />
   if (profile.error || !profile.data) return <ErrorState message={profile.error?.message} onRetry={() => profile.refetch()} className="container-page" />
 
   const { team, records, matches } = profile.data

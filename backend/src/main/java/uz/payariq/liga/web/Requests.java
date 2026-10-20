@@ -85,6 +85,21 @@ public final class Requests {
     public record GroupInput(@NotBlank(message = "Guruh nomini kiriting") String name, @NotNull List<@NotNull UUID> teamIds) {
     }
 
+    public record RoundTeamSlotInput(@NotBlank(message = "O‘rinni tanlang") String slot, @NotNull(message = "Futbolchini tanlang") UUID playerId) {
+    }
+
+    /** Ramziy jamoa: publish=false — qoralama, true — saytda e'lon qilinadi (5 o'rin ham to'lishi kerak) */
+    public record RoundTeamInput(
+            @NotNull(message = "Bosqichni tanlang") MatchStage stage,
+            Integer round,
+            PlayoffRound playoffRound,
+            @NotNull @Size(max = 5, message = "Ramziy jamoada 5 ta o‘rin bor") List<@Valid RoundTeamSlotInput> slots,
+            boolean publish) {
+    }
+
+    public record PlayerPhoto(@Size(max = 200) String photoUrl) {
+    }
+
     public record SaveGroups(@NotEmpty(message = "Kamida bitta guruh tuzing") List<@Valid GroupInput> groups) {
     }
 
@@ -138,7 +153,10 @@ public final class Requests {
             @Size(max = 120) String region,
             @Size(max = 4000) String about,
             @Pattern(regexp = "^$|^\\+?[0-9\\s()-]{7,20}$", message = "Telefon raqamini to‘g‘ri kiriting") String contactPhone,
-            @Pattern(regexp = "^$|^@?[A-Za-z0-9_]{4,32}$", message = "Telegram nomini @kanal ko‘rinishida kiriting") String telegram) {
+            @Pattern(regexp = "^$|^@?[A-Za-z0-9_]{4,32}$", message = "Telegram nomini @kanal ko‘rinishida kiriting") String telegram,
+            @Size(max = 200) String telegramChannel,
+            @Size(max = 200) String instagram,
+            @Size(max = 200) String youtube) {
     }
 
     public record VenueInput(@NotBlank(message = "Maydon nomini kiriting") @Size(max = 80) String name, @Size(max = 60) String village) {

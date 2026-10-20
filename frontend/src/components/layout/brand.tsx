@@ -110,7 +110,7 @@ export function SeasonSelect({ className, tone = "band", compact = false }: { cl
         {seasons.map((s) => (
           <SelectItem key={s.id} value={s.id}>
             {s.year}-yil, {s.name}
-            {s.status === "ACTIVE" ? " (joriy)" : ""}
+            {s.test ? " (sinov)" : s.status === "ACTIVE" ? " (joriy)" : ""}
           </SelectItem>
         ))}
       </SelectContent>

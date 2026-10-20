@@ -4,6 +4,7 @@ import {
   ChartColumn,
   ClipboardList,
   ExternalLink,
+  FlaskConical,
   Handshake,
   LayoutDashboard,
   Layers,
@@ -27,7 +28,7 @@ import type { AdminRole } from "@/api/types"
 import { EmptyState, PageSkeleton } from "@/components/league/states"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import { useSeason } from "@/hooks/use-season"
+import { SeasonProvider, useSeason } from "@/hooks/use-season"
 import { useLiveUpdates } from "@/hooks/use-live-updates"
 import { canManageCompetition, canOpen, ROLE_LABELS } from "@/lib/roles"
 import { cn } from "@/lib/utils"
@@ -162,10 +163,10 @@ function FirstSeasonPrompt({ role }: { role: AdminRole }) {
         pageTitle
         icon={Trophy}
         title="Birinchi mavsumni yarating"
-        description="Jamoalar, qur’a, o‘yinlar va natijalar mavsumga bog‘lanadi. Avval mavsum oching — keyin jamoalarni qo‘shasiz."
+        description="Jamoalar, qur’a, o‘yinlar va natijalar mavsumga bog‘lanadi. Avval mavsum oching — keyin jamoalarni qo‘shasiz. Tizimni avval sinab ko‘rmoqchi bo‘lsangiz, «Sinov mavsumi» belgisini qo‘ying: u saytda ko‘rinmaydi va keyin butunlay o‘chiriladi."
         action={
           <Button asChild>
-            <Link to="/admin/mavsumlar">Mavsumlar bo‘limiga o‘tish</Link>
+            <Link to="/admin/mavsumlar?yangi=1">Mavsum ochish</Link>
           </Button>
         }
       />
@@ -209,11 +210,37 @@ function useLogout() {
   }
 }
 
+/** Sinov mavsumi tanlanganda: muxlislar uni ko'rmaydi, sinab bo'lgach o'chiriladi */
+function TestSeasonBanner({ name }: { name: string }) {
+  return (
+    <p role="note" className="mb-4 flex items-start gap-2 rounded-xl border border-dashed border-gold bg-gold-soft px-4 py-3 text-sm text-foreground">
+      <FlaskConical className="mt-0.5 size-4 shrink-0 text-gold-text" aria-hidden="true" />
+      <span>
+        <strong>«{name}» — sinov mavsumi.</strong> Saytda muxlislarga ko‘rinmaydi. Sinab bo‘lgach, uni{" "}
+        <Link to="/admin/mavsumlar" className="font-semibold underline underline-offset-2">
+          Mavsumlar
+        </Link>{" "}
+        bo‘limida butunlay o‘chiring — keyin haqiqiy mavsumni boshlaysiz.
+      </span>
+    </p>
+  )
+}
+
+/** Admin panelida mavsumlar ro'yxati sinov mavsumlari bilan (kirilgandan keyin so'raladi) */
 export function AdminLayout() {
+  const { data: me } = useMe()
+  return (
+    <SeasonProvider admin enabled={Boolean(me)}>
+      <AdminLayoutInner />
+    </SeasonProvider>
+  )
+}
+
+function AdminLayoutInner() {
   const { data: me, isLoading } = useMe()
   // Boshqa admin yoki Telegram bot kiritgan natijalar ham darhol ko'rinadi
   useLiveUpdates({ toasts: false })
-  const { seasons, isLoading: seasonsLoading } = useSeason()
+  const { seasons, season, isLoading: seasonsLoading } = useSeason()
   const location = useLocation()
   const needsSeason = !seasonsLoading && seasons.length === 0 && !WITHOUT_SEASON.some((p) => location.pathname.startsWith(p))
   const [menuOpen, setMenuOpen] = useState(false)
@@ -290,6 +317,7 @@ export function AdminLayout() {
         </header>
 
         <main id="admin-main" className="flex-1 px-4 pt-5 pb-24 md:px-6 md:pt-6 lg:pb-10">
+          {allowed && !needsSeason && season?.test && <TestSeasonBanner name={season.name} />}
           {!allowed ? <NoAccess role={me.role} /> : needsSeason ? <FirstSeasonPrompt role={me.role} /> : <Outlet />}
         </main>
       </div>

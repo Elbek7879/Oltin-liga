@@ -95,8 +95,9 @@ test("bo‘sh bazadan chempion aniqlangunga qadar to‘liq jarayon", async ({ pa
   await expect(page.getByText("Birinchi mavsumni yarating")).toBeVisible()
   await sweepEmpty(page, EMPTY_ADMIN)
   await page.goto("/admin")
-  await page.getByRole("link", { name: "Mavsumlar bo‘limiga o‘tish" }).click()
-  await page.getByRole("button", { name: "Yangi mavsum" }).click()
+  // «Mavsum ochish» darhol yangi mavsum oynasini ochadi
+  await page.getByRole("link", { name: "Mavsum ochish" }).click()
+  await expect(page.getByRole("dialog", { name: "Yangi mavsum" })).toBeVisible()
   await page.getByLabel("Nomi").fill("Sinov mavsumi")
   await page.getByRole("button", { name: "Mavsumni yaratish" }).click()
   await expect(page.getByText("«Sinov mavsumi» yaratildi")).toBeVisible()

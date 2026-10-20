@@ -111,8 +111,17 @@ public class PublicReadService {
                 .orElseThrow(() -> ApiException.notFound("Liga sozlamalari topilmadi."));
     }
 
+    /** Saytdagi mavsumlar: sinov mavsumlari muxlislarga ko'rsatilmaydi */
     public List<SeasonDto> seasons() {
-        return seasons.findAllByOrderByYearDescNumberDesc().stream().map(SeasonDto::of).toList();
+        return publicSeasons().stream().map(SeasonDto::of).toList();
+    }
+
+    private List<Season> publicSeasons() {
+        return seasons.findAllByOrderByYearDescNumberDesc().stream().filter(s -> !s.test).toList();
+    }
+
+    private Set<UUID> testSeasonIds() {
+        return seasons.findByTestTrue().stream().map(Season::getId).collect(Collectors.toSet());
     }
 
     public SeasonBundle bundle(UUID seasonId) {
@@ -142,7 +151,7 @@ public class PublicReadService {
     public ArchiveBundle archive() {
         List<SeasonSummary> summaries = new ArrayList<>();
         List<TeamView> finalTeams = new ArrayList<>();
-        for (Season s : seasons.findAllByOrderByYearDescNumberDesc()) {
+        for (Season s : publicSeasons()) {
             SeasonData d = loader.load(s.getId());
             SeasonSummary summary = summary(d);
             summaries.add(summary);
@@ -193,7 +202,11 @@ public class PublicReadService {
 
     public TeamProfile teamProfile(UUID teamId) {
         Team team = teams.findById(teamId).orElseThrow(() -> ApiException.notFound("Jamoa topilmadi."));
-        List<SeasonTeam> sts = seasonTeams.findByTeamId(teamId);
+        Set<UUID> hidden = testSeasonIds();
+        List<SeasonTeam> all = seasonTeams.findByTeamId(teamId);
+        List<SeasonTeam> sts = all.stream().filter(st -> !hidden.contains(st.seasonId)).toList();
+        // Faqat sinov mavsumida qatnashgan jamoa saytda yo'q
+        if (!all.isEmpty() && sts.isEmpty()) throw ApiException.notFound("Jamoa topilmadi.");
         List<TeamSeasonRecord> records = new ArrayList<>();
         List<TeamView> views = new ArrayList<>();
         Set<UUID> stIds = sts.stream().map(SeasonTeam::getId).collect(Collectors.toSet());
@@ -242,8 +255,12 @@ public class PublicReadService {
 
     public PlayerProfile playerProfile(UUID playerId) {
         Player player = players.findById(playerId).orElseThrow(() -> ApiException.notFound("Futbolchi topilmadi."));
+        Set<UUID> hidden = testSeasonIds();
+        List<RosterEntry> all = rosters.findByPlayerId(playerId);
+        List<RosterEntry> visible = all.stream().filter(r -> !hidden.contains(r.seasonId)).toList();
+        if (!all.isEmpty() && visible.isEmpty()) throw ApiException.notFound("Futbolchi topilmadi.");
         List<PlayerSeasonRecord> records = new ArrayList<>();
-        for (RosterEntry r : rosters.findByPlayerId(playerId)) {
+        for (RosterEntry r : visible) {
             SeasonData d = loader.load(r.seasonId);
             PlayerStatsDto stats = d.playerStats().stream()
                     .filter(s -> s.playerId.equals(playerId) && s.seasonTeamId.equals(r.seasonTeamId))
@@ -252,6 +269,7 @@ public class PublicReadService {
         }
         records.sort(Comparator.comparingInt((PlayerSeasonRecord r) -> r.season().year()).reversed());
         List<AwardWithSeason> playerAwards = awards.findByPlayerId(playerId).stream()
+                .filter(a -> !hidden.contains(a.seasonId))
                 .map(a -> new AwardWithSeason(a.getId(), a.seasonId, a.type, a.seasonTeamId, a.playerId, a.note, SeasonDto.of(loader.season(a.seasonId))))
                 .toList();
         return new PlayerProfile(PublicPlayer.of(player), records, playerAwards);
@@ -259,8 +277,9 @@ public class PublicReadService {
 
     /** Ikki jamoa o'rtasidagi barcha mavsumlardagi rasmiy uchrashuvlar */
     public HeadToHead headToHead(UUID teamA, UUID teamB) {
-        Set<UUID> a = seasonTeams.findByTeamId(teamA).stream().map(SeasonTeam::getId).collect(Collectors.toSet());
-        Set<UUID> b = seasonTeams.findByTeamId(teamB).stream().map(SeasonTeam::getId).collect(Collectors.toSet());
+        Set<UUID> hidden = testSeasonIds();
+        Set<UUID> a = seasonTeams.findByTeamId(teamA).stream().filter(st -> !hidden.contains(st.seasonId)).map(SeasonTeam::getId).collect(Collectors.toSet());
+        Set<UUID> b = seasonTeams.findByTeamId(teamB).stream().filter(st -> !hidden.contains(st.seasonId)).map(SeasonTeam::getId).collect(Collectors.toSet());
         if (a.isEmpty() || b.isEmpty()) return new HeadToHead(List.of(), List.of(), seasons());
         List<Match> list = matches.findInvolving(a).stream()
                 .filter(m -> m.status == MatchStatus.FINISHED && m.homeId != null && m.awayId != null)

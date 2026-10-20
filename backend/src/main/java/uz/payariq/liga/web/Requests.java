@@ -55,7 +55,16 @@ public final class Requests {
             @NotNull(message = "Boshlanish sanasini tanlang") LocalDate startDate,
             @NotNull(message = "Tugash sanasini tanlang") LocalDate endDate,
             @Valid Rules rules,
-            UUID copyTeamsFromSeasonId) {
+            UUID copyTeamsFromSeasonId,
+            /** Sinov mavsumi — saytda ko'rinmaydi, keyin o'chiriladi. Ixtiyoriy: yuborilmasa — oddiy mavsum */
+            Boolean test) {
+        public boolean isTest() {
+            return Boolean.TRUE.equals(test);
+        }
+    }
+
+    /** Mavsumni o'chirish: xato bosilmasligi uchun mavsum nomi qayta yoziladi */
+    public record SeasonDelete(@NotBlank(message = "Tasdiqlash uchun mavsum nomini yozing") @Size(max = 60) String name) {
     }
 
     public record TeamInput(

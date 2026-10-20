@@ -514,3 +514,61 @@ test.describe("Ramziy jamoa", () => {
     await noHorizontalScroll(page)
   })
 })
+
+test.describe("Sinov mavsumi", () => {
+  test("bosh tashkilotchi sinov mavsumini ochadi, u saytda ko‘rinmaydi va nomini yozib butunlay o‘chiradi", async ({ page }) => {
+    const errors = collectErrors(page)
+    const name = `Sinov ${Date.now().toString(36)}`
+    const team = `Sinovchi ${Date.now().toString(36).slice(-4)}`
+    await loginAsAdmin(page)
+    await page.goto("/admin/mavsumlar")
+    // Natijasi bor haqiqiy (joriy) mavsumni o'chirish tugmasi yo'q
+    const activeRow = page.locator("#admin-main li", { hasText: "Davom etmoqda" }).first()
+    await expect(activeRow).toBeVisible()
+    await expect(activeRow.getByRole("button", { name: /o‘chirish$/ })).toHaveCount(0)
+
+    await page.getByRole("button", { name: "Yangi mavsum" }).click()
+    await page.getByRole("checkbox", { name: /Sinov mavsumi/ }).click()
+    await expect(page.getByLabel("Nomi")).toHaveValue("Sinov mavsumi")
+    await page.getByLabel("Nomi").fill(name)
+    await page.getByRole("button", { name: "Mavsumni yaratish" }).click()
+    await expect(page.getByText(`«${name}» sinov mavsumi yaratildi`)).toBeVisible()
+    await expect(page.getByRole("note")).toContainText("sinov mavsumi")
+
+    // Sinov mavsumiga jamoa qo'shiladi
+    await page.goto("/admin/jamoalar")
+    await page.getByRole("button", { name: "Jamoa qo‘shish" }).click()
+    await page.getByLabel("Jamoa nomi").fill(team)
+    await page.getByLabel("Qisqa nomi").fill("SNV")
+    await page.getByRole("textbox", { name: "Qishloq" }).fill("Sinov")
+    await page.getByRole("button", { name: "Jamoani qo‘shish" }).click()
+    await expect(page.getByText(`«${team}» jamoasi qo‘shildi`)).toBeVisible()
+
+    // Saytda sinov mavsumi yo'q
+    const publicSeasons: { name: string }[] = await (await page.request.get("/api/public/seasons")).json()
+    expect(publicSeasons.map((s) => s.name)).not.toContain(name)
+
+    // O'chirish: nima o'chishi ko'rsatiladi, nom to'g'ri yozilmaguncha tugma o'chiq
+    await page.goto("/admin/mavsumlar")
+    const row = page.locator("#admin-main li", { hasText: name })
+    await expect(row.getByText("Sinov", { exact: true })).toBeVisible()
+    await row.getByRole("button", { name: `«${name}»ni o‘chirish` }).click()
+    const dialog = page.getByRole("dialog")
+    await expect(dialog).toContainText("1 ta jamoa butunlay o‘chadi")
+    const confirm = dialog.getByRole("button", { name: "Butunlay o‘chirish" })
+    await expect(confirm).toBeDisabled()
+    const input = dialog.getByLabel(/Tasdiqlash uchun mavsum nomini yozing/)
+    await input.fill("boshqa nom")
+    await expect(confirm).toBeDisabled()
+    await input.fill(name)
+    await confirm.click()
+    await expect(page.getByText(`«${name}» o‘chirildi: 1 ta jamoa, 0 ta futbolchi, 0 ta o‘yin`)).toBeVisible()
+    await expect(page.locator("#admin-main li", { hasText: name })).toHaveCount(0)
+    await expect(page.getByRole("note")).toHaveCount(0)
+
+    // Jamoa ham o'chdi
+    await page.goto("/admin/jamoalar")
+    await expect(page.locator("#admin-main").getByText(team)).toHaveCount(0)
+    expect(errors).toEqual([])
+  })
+})

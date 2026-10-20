@@ -13,6 +13,12 @@ public interface SeasonRepository extends JpaRepository<Season, UUID> {
 
     Optional<Season> findFirstByStatus(SeasonStatus status);
 
-    @Query("select coalesce(max(s.number), 0) from Season s")
+    /** Haqiqiy mavsumlarning tartib raqami (sinov mavsumlari manfiy raqam oladi va hisobga kirmaydi) */
+    @Query("select coalesce(max(s.number), 0) from Season s where s.test = false")
     int maxNumber();
+
+    @Query("select coalesce(min(s.number), 0) from Season s")
+    int minNumber();
+
+    List<Season> findByTestTrue();
 }

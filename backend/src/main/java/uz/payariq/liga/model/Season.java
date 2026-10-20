@@ -25,6 +25,8 @@ public class Season extends BaseEntity {
     public LocalDate endDate;
     @Enumerated(EnumType.STRING)
     public SeasonStatus status = SeasonStatus.DRAFT;
+    /** Sinov mavsumi: saytda ko'rinmaydi, keyin butunlay o'chiriladi */
+    public boolean test;
     public int pointsWin = 3;
     public int pointsDraw = 1;
     public int pointsLoss = 0;

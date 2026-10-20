@@ -57,7 +57,9 @@ public class SeasonService {
     public SeasonDto create(Requests.SeasonCreate in) {
         if (in.endDate().isBefore(in.startDate())) throw ApiException.badRequest("Tugash sanasi boshlanish sanasidan keyin bo‘lishi kerak.");
         Season s = new Season();
-        s.number = seasons.maxNumber() + 1;
+        // Sinov mavsumlari manfiy raqam oladi — haqiqiy mavsumlar tartibi (1, 2, 3...) buzilmaydi
+        s.number = in.isTest() ? Math.min(0, seasons.minNumber()) - 1 : seasons.maxNumber() + 1;
+        s.test = in.isTest();
         s.name = in.name().trim();
         s.year = in.year();
         s.startDate = in.startDate();
@@ -87,7 +89,7 @@ public class SeasonService {
                 }
             }
         }
-        audit.record("Mavsum", "«" + s.name + "» (" + s.year + ") yaratildi", "SEASON", s.getId());
+        audit.record("Mavsum", "«" + s.name + "» (" + s.year + ")" + (s.test ? " sinov mavsumi" : "") + " yaratildi", "SEASON", s.getId());
         return SeasonDto.of(s);
     }
 
@@ -128,6 +130,9 @@ public class SeasonService {
         Season s = loader.season(seasonId);
         if (s.status != SeasonStatus.DRAFT) throw ApiException.conflict("Faqat tayyorlanayotgan mavsumni boshlash mumkin.");
         seasons.findFirstByStatus(SeasonStatus.ACTIVE).ifPresent(active -> {
+            if (active.test) {
+                throw ApiException.conflict("Hozir «" + active.name + "» sinov mavsumi boshlangan. Avval uni «Mavsumlar» bo‘limida o‘chiring.");
+            }
             throw ApiException.conflict("Avval joriy «" + active.name + "»ni yakunlang.");
         });
         s.status = SeasonStatus.ACTIVE;

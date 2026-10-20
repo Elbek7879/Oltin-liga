@@ -25,6 +25,13 @@ Har kim faqat o‘z roliga kerakli bo‘limlarni ko‘radi. Cheklov serverda ham
 
 Boshqaruv panelining yuqorisida **Mavsum bosqichlari** turadi: qaysi qadam bajarilgani, hozir nima qilish kerakligi va diqqat talab qiladigan ishlar (masalan, qur’a yoki sanasi belgilanmagan o‘yinlar) tugmasi bilan ko‘rsatiladi. **Barcha bosqichlar** bosilsa, to‘liq ro‘yxat ochiladi.
 
+**Sinov mavsumi (tizimni sinab ko‘rish).** Haqiqiy mavsumdan oldin tizimni sinab ko‘rmoqchi bo‘lsangiz, **Mavsumlar → Yangi mavsum** oynasida **Sinov mavsumi** belgisini qo‘ying. Unda hamma narsani qilish mumkin: jamoa va futbolchi qo‘shish, qur’a, sanalar, natija, pley-off, ramziy jamoa. Sinov mavsumi saytda muxlislarga ko‘rinmaydi; admin panelda ustida «sinov mavsumi» ogohlantirishi turadi.
+
+Sinab bo‘lgach, **Mavsumlar** ro‘yxatida sinov mavsumi yonidagi **O‘chirish** tugmasini bosing (faqat bosh tashkilotchi). Oynada nima o‘chishi ko‘rsatiladi: o‘yinlar, faqat shu mavsumda qatnashgan jamoa va futbolchilar, guruhlar, ramziy jamoalar, rasmlar va tarixdagi yozuvlar. Tasdiqlash uchun mavsum nomini yozing va **Butunlay o‘chirish**ni bosing. Bu amalni qaytarib bo‘lmaydi. Boshqa mavsumda ham qatnashgan jamoa va futbolchilar saqlanadi.
+
+- Sinov mavsumi boshlangan bo‘lsa, haqiqiy mavsumni boshlashdan oldin uni o‘chirish kerak — tizim buni o‘zi eslatadi.
+- Haqiqiy mavsum himoyalangan: unda natija kiritilgan bo‘lsa yoki u yakunlangan bo‘lsa, uni o‘chirib bo‘lmaydi. Xato ochilgan, hali boshlanmagan haqiqiy mavsumni esa o‘chirish mumkin.
+
 Odatdagi tartib:
 
 1. **Mavsumlar → Yangi mavsum.** Yil, nomi, sanalari va ochko qoidalarini kiriting. So‘ng **Boshlash** tugmasi bilan mavsumni joriy qiling. Bir vaqtda faqat bitta mavsum boshlangan bo‘ladi — yangisini boshlash uchun eskisini yakunlang.

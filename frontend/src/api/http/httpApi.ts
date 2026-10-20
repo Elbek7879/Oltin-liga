@@ -78,6 +78,7 @@ export const httpApi: LeagueApi = {
   // ---------- Ommaviy ----------
   getSettings: () => request("GET", pub("/settings")),
   listSeasons: () => request("GET", pub("/seasons")),
+  listSeasonsAdmin: () => request("GET", adm("/seasons")),
   getSeasonBundle: (seasonId) => request("GET", pub(`/seasons/${enc(seasonId)}/bundle`)),
   getArchive: () => request("GET", pub("/archive")),
   getTeamProfile: (teamId) => request("GET", pub(`/teams/${enc(teamId)}/profile`)),
@@ -115,6 +116,8 @@ export const httpApi: LeagueApi = {
   activateSeason: (seasonId) => request("POST", adm(`/seasons/${enc(seasonId)}/activate`)),
   previewFinishSeason: (seasonId) => request("GET", adm(`/seasons/${enc(seasonId)}/finish-preview`)),
   finishSeason: (seasonId) => request("POST", adm(`/seasons/${enc(seasonId)}/finish`)),
+  previewDeleteSeason: (seasonId) => request("GET", adm(`/seasons/${enc(seasonId)}/delete-preview`)),
+  deleteSeason: (seasonId, name) => request("POST", adm(`/seasons/${enc(seasonId)}/delete`), { name }),
 
   // ---------- Admin: jamoalar va futbolchilar ----------
   listTeamsAdmin: (seasonId) => request("GET", adm(`/seasons/${enc(seasonId)}/teams`)),

@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
 import { useQueryClient } from "@tanstack/react-query"
-import { seasonBundleQuery, useSeasons } from "@/api/hooks"
+import { seasonBundleQuery, useSeasonList } from "@/api/hooks"
 import type { ID, Season } from "@/domain/types"
 
 interface SeasonState {
@@ -26,8 +26,14 @@ function readInitial(): string | null {
   }
 }
 
-export function SeasonProvider({ children }: { children: ReactNode }) {
-  const { data: seasons = [], isLoading } = useSeasons()
+/**
+ * admin: admin paneli uchun ro'yxat (sinov mavsumlari bilan). enabled=false bo'lsa (hali kirilmagan),
+ * ro'yxat so'ralmaydi va yuklanmoqda deb hisoblanadi.
+ */
+export function SeasonProvider({ children, admin = false, enabled = true }: { children: ReactNode; admin?: boolean; enabled?: boolean }) {
+  const query = useSeasonList(admin, enabled)
+  const { data: seasons = [] } = query
+  const isLoading = admin ? query.isPending : query.isLoading
   const [selected, setSelected] = useState<string | null>(readInitial)
   const client = useQueryClient()
 

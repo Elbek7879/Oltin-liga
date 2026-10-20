@@ -17,6 +17,8 @@ import {
   type AdminTeamRow,
   type AdminUser,
   type ArchiveBundle,
+  type SeasonDeleted,
+  type SeasonDeletePreview,
   type DashboardData,
   type FinishSeasonPreview,
   type LeagueApi,
@@ -343,6 +345,56 @@ function syncPlayoff(db: LeagueDb, seasonId: ID) {
   )
 }
 
+function sortSeasons(list: Season[]) {
+  return [...list].sort((a, b) => b.year - a.year || b.number - a.number)
+}
+
+function testSeasonIds(db: LeagueDb) {
+  return new Set(db.seasons.filter((x) => x.test).map((x) => x.id))
+}
+
+/** Mavsumni o'chirish rejasi: faqat shu mavsumdagi jamoa va futbolchilar o'chadi (backenddagi qoida bilan bir xil) */
+function deletePlan(db: LeagueDb, seasonId: ID) {
+  const s = season(db, seasonId)
+  const others = (sid: ID) => sid !== seasonId
+  const sts = db.seasonTeams.filter((st) => st.seasonId === seasonId)
+  const teamsRemoved = new Set(
+    sts.map((st) => st.teamId).filter((teamId) => !db.seasonTeams.some((o) => o.teamId === teamId && others(o.seasonId))),
+  )
+  const otherMatches = new Set(db.matches.filter((m) => others(m.seasonId)).map((m) => m.id))
+  const seasonPlayers = new Set(db.rosters.filter((r) => r.seasonId === seasonId).map((r) => r.playerId))
+  const playersRemoved = new Set(
+    [...seasonPlayers].filter(
+      (id) =>
+        !db.rosters.some((r) => r.playerId === id && others(r.seasonId)) &&
+        !db.events.some((e) => otherMatches.has(e.matchId) && (e.playerId === id || e.assistId === id)) &&
+        !db.appearances.some((a) => otherMatches.has(a.matchId) && a.playerId === id) &&
+        !db.awards.some((a) => others(a.seasonId) && a.playerId === id) &&
+        !(db.roundTeams ?? []).some((t) => others(t.seasonId) && t.slots.some((x) => x.playerId === id)) &&
+        !db.seasonTeams.some((st) => others(st.seasonId) && st.captainId === id),
+    ),
+  )
+  const matches = seasonMatches(db, seasonId)
+  const results = matches.filter((m) => m.status === "FINISHED" || m.status === "LIVE").length
+  let problem: string | null = null
+  if (!s.test && s.status === "FINISHED") problem = `«${s.name}» yakunlangan va arxivda saqlanadi — uni o‘chirib bo‘lmaydi.`
+  else if (!s.test && results > 0) problem = `«${s.name}» haqiqiy mavsum va unda o‘yin natijalari bor — uni o‘chirib bo‘lmaydi. Butunlay faqat sinov mavsumi o‘chiriladi.`
+  const preview: SeasonDeletePreview = {
+    seasonId,
+    name: s.name,
+    test: Boolean(s.test),
+    canDelete: problem === null,
+    problem,
+    teams: sts.length,
+    teamsRemoved: teamsRemoved.size,
+    players: seasonPlayers.size,
+    playersRemoved: playersRemoved.size,
+    matches: matches.length,
+    results,
+  }
+  return { preview, teamsRemoved, playersRemoved }
+}
+
 function seasonMatches(db: LeagueDb, seasonId: ID) {
   return db.matches.filter((m) => m.seasonId === seasonId)
 }
@@ -476,7 +528,12 @@ export const mockApi: LeagueApi = {
   },
 
   async listSeasons() {
-    return delay([...load().seasons].sort((a, b) => b.year - a.year || b.number - a.number))
+    return delay(sortSeasons(load().seasons.filter((x) => !x.test)))
+  },
+
+  async listSeasonsAdmin() {
+    requireAdmin()
+    return delay(sortSeasons(load().seasons))
   },
 
   async getSeasonBundle(seasonId) {
@@ -485,7 +542,7 @@ export const mockApi: LeagueApi = {
 
   async getArchive() {
     const db = load()
-    const summaries = [...db.seasons].sort((a, b) => b.year - a.year).map((s) => summary(db, s))
+    const summaries = db.seasons.filter((x) => !x.test).sort((a, b) => b.year - a.year).map((s) => summary(db, s))
     const finalTeamIds = new Set(summaries.flatMap((s) => (s.final ? [s.final.homeId, s.final.awayId] : [])).filter(Boolean) as ID[])
     const teams = db.seasonTeams.filter((st) => finalTeamIds.has(st.id)).map((st) => teamView(db, st))
     const result: ArchiveBundle = { summaries, teams }
@@ -495,7 +552,11 @@ export const mockApi: LeagueApi = {
   async getTeamProfile(teamId) {
     const db = load()
     const team = db.teams.find((t) => t.id === teamId) ?? fail("Jamoa topilmadi.")
-    const sts = db.seasonTeams.filter((s) => s.teamId === teamId)
+    const hidden = testSeasonIds(db)
+    const allSts = db.seasonTeams.filter((s) => s.teamId === teamId)
+    const sts = allSts.filter((s) => !hidden.has(s.seasonId))
+    // Faqat sinov mavsumida qatnashgan jamoa saytda yo'q
+    if (allSts.length > 0 && sts.length === 0) fail("Jamoa topilmadi.")
     const stIds = new Set(sts.map((s) => s.id))
     const records: TeamSeasonRecord[] = []
     for (const st of sts) {
@@ -554,7 +615,10 @@ export const mockApi: LeagueApi = {
   async getPlayerProfile(playerId) {
     const db = load()
     if (!db.players.some((p) => p.id === playerId)) fail("Futbolchi topilmadi.")
-    const entries = db.rosters.filter((r) => r.playerId === playerId)
+    const hidden = testSeasonIds(db)
+    const allEntries = db.rosters.filter((r) => r.playerId === playerId)
+    const entries = allEntries.filter((r) => !hidden.has(r.seasonId))
+    if (allEntries.length > 0 && entries.length === 0) fail("Futbolchi topilmadi.")
     const records = entries
       .map((r) => {
         const s = season(db, r.seasonId)
@@ -581,7 +645,7 @@ export const mockApi: LeagueApi = {
       })
       .sort((a, b) => b.season.year - a.season.year)
     const awards = db.awards
-      .filter((a) => a.playerId === playerId)
+      .filter((a) => a.playerId === playerId && !hidden.has(a.seasonId))
       .map((a) => ({ ...a, season: season(db, a.seasonId) }))
     return delay({ player: publicPlayer(db, playerId), records, awards })
   },
@@ -589,12 +653,13 @@ export const mockApi: LeagueApi = {
   async getHeadToHead(teamA, teamB) {
     const db = load()
     const teamOf = (stId: ID) => db.seasonTeams.find((s) => s.id === stId)?.teamId
-    const matches = headToHead(db.matches, teamA, teamB, teamOf)
+    const hidden = testSeasonIds(db)
+    const matches = headToHead(db.matches.filter((m) => !hidden.has(m.seasonId)), teamA, teamB, teamOf)
     const ids = new Set(matches.flatMap((m) => [m.homeId!, m.awayId!]))
     return delay({
       matches,
       teams: db.seasonTeams.filter((s) => ids.has(s.id)).map((s) => teamView(db, s)),
-      seasons: db.seasons,
+      seasons: db.seasons.filter((x) => !x.test),
     })
   },
 
@@ -758,10 +823,13 @@ export const mockApi: LeagueApi = {
     const db = load()
     if (!input.name.trim()) fail("Mavsum nomini kiriting.")
     if (!input.startDate || !input.endDate || input.endDate < input.startDate) fail("Tugash sanasi boshlanish sanasidan keyin bo‘lishi kerak.")
-    const number = Math.max(0, ...db.seasons.map((s) => s.number)) + 1
+    const number = input.test
+      ? Math.min(0, ...db.seasons.map((x) => x.number)) - 1
+      : Math.max(0, ...db.seasons.filter((x) => !x.test).map((x) => x.number)) + 1
     const s: Season = {
       id: newId("s"),
       number,
+      test: Boolean(input.test),
       name: input.name.trim(),
       year: input.year,
       startDate: input.startDate,
@@ -781,7 +849,7 @@ export const mockApi: LeagueApi = {
         }
       }
     }
-    audit(db, "Mavsum", `«${s.name}» (${s.year}) yaratildi`)
+    audit(db, "Mavsum", `«${s.name}» (${s.year})${s.test ? " sinov mavsumi" : ""} yaratildi`)
     save()
     return delay(s)
   },
@@ -808,11 +876,44 @@ export const mockApi: LeagueApi = {
     const s = season(db, seasonId)
     if (s.status !== "DRAFT") fail("Faqat tayyorlanayotgan mavsumni boshlash mumkin.")
     const active = db.seasons.find((x) => x.status === "ACTIVE")
+    if (active?.test) fail(`Hozir «${active.name}» sinov mavsumi boshlangan. Avval uni «Mavsumlar» bo‘limida o‘chiring.`)
     if (active) fail(`Avval joriy «${active.name}»ni yakunlang.`)
     s.status = "ACTIVE"
     audit(db, "Mavsum", `«${s.name}» boshlandi`)
     save()
     return delay(s)
+  },
+
+  async previewDeleteSeason(seasonId) {
+    requireAdmin()
+    return delay(deletePlan(load(), seasonId).preview)
+  },
+
+  async deleteSeason(seasonId, name) {
+    requireSuperAdmin()
+    const db = load()
+    const s = season(db, seasonId)
+    if (!name || s.name.trim().toLowerCase() !== name.trim().toLowerCase()) fail(`Tasdiqlash uchun mavsum nomini aynan yozing: «${s.name}».`)
+    const plan = deletePlan(db, seasonId)
+    if (plan.preview.problem) fail(plan.preview.problem)
+    const matchIds = new Set(seasonMatches(db, seasonId).map((m) => m.id))
+    db.roundTeams = (db.roundTeams ?? []).filter((t) => t.seasonId !== seasonId)
+    db.lots = (db.lots ?? []).filter((l) => l.seasonId !== seasonId)
+    db.awards = db.awards.filter((a) => a.seasonId !== seasonId)
+    db.adjustments = db.adjustments.filter((a) => a.seasonId !== seasonId)
+    db.events = db.events.filter((e) => !matchIds.has(e.matchId))
+    db.appearances = db.appearances.filter((a) => !matchIds.has(a.matchId))
+    db.matches = db.matches.filter((m) => m.seasonId !== seasonId)
+    db.groups = db.groups.filter((g) => g.seasonId !== seasonId)
+    db.rosters = db.rosters.filter((r) => r.seasonId !== seasonId)
+    db.seasonTeams = db.seasonTeams.filter((st) => st.seasonId !== seasonId)
+    db.seasons = db.seasons.filter((x) => x.id !== seasonId)
+    db.teams = db.teams.filter((t) => !plan.teamsRemoved.has(t.id))
+    db.players = db.players.filter((p) => !plan.playersRemoved.has(p.id))
+    audit(db, "Mavsum", `«${s.name}»${s.test ? " sinov mavsumi" : ""} butunlay o‘chirildi: ${plan.teamsRemoved.size} ta jamoa, ${plan.playersRemoved.size} ta futbolchi, ${matchIds.size} ta o‘yin`)
+    save()
+    const result: SeasonDeleted = { name: s.name, teams: plan.teamsRemoved.size, players: plan.playersRemoved.size, matches: matchIds.size }
+    return delay(result)
   },
 
   async previewFinishSeason(seasonId) {

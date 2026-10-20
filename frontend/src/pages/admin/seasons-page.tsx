@@ -1,13 +1,15 @@
-import { CalendarRange, Crown, Flag, Play, Plus, TriangleAlert } from "lucide-react"
+import { CalendarRange, Crown, FlaskConical, Flag, LoaderCircle, Play, Plus, Trash, TriangleAlert } from "lucide-react"
 import { useState } from "react"
 import { useSearchParams } from "react-router"
+import { toast } from "sonner"
 import { api } from "@/api/client"
-import { useAdminMutation, useFinishPreview, useMe } from "@/api/hooks"
+import { useAdminMutation, useFinishPreview, useMe, useSeasonDeletePreview } from "@/api/hooks"
 import { defaultSeasonRules } from "@/api/defaults"
 import { AdminPageHeader, Field, runAction } from "@/components/admin/admin-ui"
 import { EmptyState } from "@/components/league/states"
 import { TeamCrest } from "@/components/league/team-crest"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -20,9 +22,13 @@ import { cn } from "@/lib/utils"
 const NONE = "__none__"
 
 function NewSeasonDialog({ open, onOpenChange, seasons }: { open: boolean; onOpenChange: (v: boolean) => void; seasons: Season[] }) {
-  const last = seasons[0]
+  // Sinov mavsumlari raqam va jamoalar taklifida hisobga olinmaydi
+  const real = seasons.filter((x) => !x.test)
+  const last = real[0]
   const nextYear = (last?.year ?? new Date().getFullYear()) + 1
-  const [name, setName] = useState(`${(last?.number ?? 0) + 1}-mavsum`)
+  const defaultName = `${Math.max(0, ...real.map((x) => x.number)) + 1}-mavsum`
+  const [name, setName] = useState(defaultName)
+  const [test, setTest] = useState(false)
   const [year, setYear] = useState(String(nextYear))
   const [start, setStart] = useState(`${nextYear}-05-01`)
   const [end, setEnd] = useState(`${nextYear}-07-31`)
@@ -38,13 +44,20 @@ function NewSeasonDialog({ open, onOpenChange, seasons }: { open: boolean; onOpe
       endDate: end,
       rules: { ...defaultSeasonRules(), legs: legs === "2" ? 2 : 1 },
       copyTeamsFromSeasonId: copyFrom === NONE ? null : copyFrom,
+      test,
     }),
   )
+  const toggleTest = (on: boolean) => {
+    setTest(on)
+    if (on && name === defaultName) setName("Sinov mavsumi")
+    if (!on && name === "Sinov mavsumi") setName(defaultName)
+    if (on) setCopyFrom(NONE)
+  }
   const submit = async () => {
     setFormError(null)
     if (!/^\d{4}$/.test(year)) return setFormError("Yilni 4 ta raqam bilan kiriting.")
     if (end < start) return setFormError("Tugash sanasi boshlanish sanasidan keyin bo‘lsin.")
-    const s = await runAction(() => mutation.mutateAsync(undefined), `«${name}» yaratildi`)
+    const s = await runAction(() => mutation.mutateAsync(undefined), test ? `«${name}» sinov mavsumi yaratildi` : `«${name}» yaratildi`)
     if (s) {
       setSeasonId(s.id)
       onOpenChange(false)
@@ -57,6 +70,24 @@ function NewSeasonDialog({ open, onOpenChange, seasons }: { open: boolean; onOpe
           <DialogTitle className="font-display text-xl">Yangi mavsum</DialogTitle>
           <DialogDescription>Yangi mavsum alohida saqlanadi — oldingi mavsumlar natijalari o‘zgarmaydi.</DialogDescription>
         </DialogHeader>
+        <label
+          htmlFor="ns-test"
+          className={cn(
+            "flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors duration-150",
+            test ? "border-dashed border-gold bg-gold-soft" : "border-border hover:bg-muted/60",
+          )}
+        >
+          <Checkbox id="ns-test" checked={test} onCheckedChange={(v) => toggleTest(v === true)} className="mt-0.5" aria-describedby="ns-test-hint" />
+          <span className="min-w-0">
+            <span className="flex items-center gap-1.5 text-sm font-semibold">
+              <FlaskConical className="size-4 text-gold-text" aria-hidden="true" />
+              Sinov mavsumi
+            </span>
+            <span id="ns-test-hint" className="mt-0.5 block text-xs text-muted-foreground">
+              Tizimni sinab ko‘rish uchun: jamoa qo‘shing, qur’a tashlang, natija kiriting. Saytda muxlislarga ko‘rinmaydi; sinab bo‘lgach butunlay o‘chiriladi.
+            </span>
+          </span>
+        </label>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Nomi" htmlFor="ns-name" required>
             <Input id="ns-name" value={name} onChange={(e) => setName(e.target.value)} />
@@ -84,7 +115,7 @@ function NewSeasonDialog({ open, onOpenChange, seasons }: { open: boolean; onOpe
               <SelectTrigger id="ns-copy" className="w-full"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value={NONE}>Bo‘sh boshlash</SelectItem>
-                {seasons.map((s) => <SelectItem key={s.id} value={s.id}>{s.year}-yil jamoalari</SelectItem>)}
+                {seasons.map((s) => <SelectItem key={s.id} value={s.id}>{s.year}-yil, {s.name}{s.test ? " (sinov)" : ""} jamoalari</SelectItem>)}
               </SelectContent>
             </Select>
           </Field>
@@ -173,11 +204,91 @@ function FinishDialog({ season, open, onOpenChange }: { season: Season; open: bo
   )
 }
 
+/** Mavsumni butunlay o'chirish: nima o'chishini ko'rsatadi, mavsum nomini qayta yozib tasdiqlanadi */
+function DeleteSeasonDialog({ season, seasons, open, onOpenChange }: { season: Season; seasons: Season[]; open: boolean; onOpenChange: (v: boolean) => void }) {
+  const { seasonId, setSeasonId } = useSeason()
+  const [typed, setTyped] = useState("")
+  const mutation = useAdminMutation((confirmName: string) => api.deleteSeason(season.id, confirmName))
+  // O'chirish boshlangach oldindan ko'rish qayta so'ralmaydi (mavsum endi yo'q)
+  const { data, isLoading, error } = useSeasonDeletePreview(season.id, open && mutation.isIdle)
+  const nameOk = typed.trim().toLowerCase() === season.name.trim().toLowerCase()
+  const kept = (all: number, removed: number) => (all > removed ? `, ${all - removed} tasi boshqa mavsumda ham qatnashgani uchun saqlanadi` : "")
+
+  const confirm = async () => {
+    // O'chiriladigan mavsum tanlangan bo'lsa, panel oldindan boshqa mavsumga o'tadi
+    const wasSelected = seasonId === season.id
+    const fallback = seasons.find((x) => x.id !== season.id && x.status === "ACTIVE") ?? seasons.find((x) => x.id !== season.id)
+    if (wasSelected && fallback) setSeasonId(fallback.id)
+    try {
+      const r = await mutation.mutateAsync(typed)
+      toast.success(`«${r.name}» o‘chirildi: ${r.teams} ta jamoa, ${r.players} ta futbolchi, ${r.matches} ta o‘yin`)
+      onOpenChange(false)
+    } catch (err) {
+      if (wasSelected) setSeasonId(season.id)
+      toast.error(err instanceof Error ? err.message : "Mavsumni o‘chirib bo‘lmadi. Qayta urinib ko‘ring.")
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 font-display text-xl">
+            <TriangleAlert className="size-5 text-destructive" aria-hidden="true" />
+            «{season.name}»ni butunlay o‘chirish
+          </DialogTitle>
+          <DialogDescription>
+            {season.test ? "Sinov mavsumi va unda kiritilgan hamma narsa o‘chadi." : "Xato ochilgan mavsumni o‘chirish mumkin."} Bu amalni qaytarib bo‘lmaydi.
+          </DialogDescription>
+        </DialogHeader>
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground">Tekshirilmoqda…</p>
+        ) : error || !data ? (
+          <p role="alert" className="text-sm text-destructive">{error?.message ?? "Ma’lumotni yuklab bo‘lmadi."}</p>
+        ) : data.problem ? (
+          <p role="alert" className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm">{data.problem}</p>
+        ) : (
+          <>
+            <ul className="space-y-1.5 rounded-lg border border-border p-3 text-sm">
+              <li>
+                <strong>{data.matches} ta o‘yin</strong>
+                {data.results > 0 && `, ${data.results} tasida natija`}
+              </li>
+              <li>
+                <strong>{data.teamsRemoved} ta jamoa</strong> butunlay o‘chadi{kept(data.teams, data.teamsRemoved)}
+              </li>
+              <li>
+                <strong>{data.playersRemoved} ta futbolchi</strong> butunlay o‘chadi{kept(data.players, data.playersRemoved)}
+              </li>
+              <li className="text-muted-foreground">Guruhlar, jadval, ramziy jamoalar, rasmlar va bu mavsum haqidagi tarix yozuvlari ham o‘chadi.</li>
+            </ul>
+            <Field label={`Tasdiqlash uchun mavsum nomini yozing: «${season.name}»`} htmlFor="ds-name">
+              <Input id="ds-name" value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" placeholder={season.name} />
+            </Field>
+          </>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Bekor qilish</Button>
+          <Button
+            className="bg-destructive text-white hover:bg-destructive/90"
+            disabled={!data?.canDelete || !nameOk || mutation.isPending}
+            onClick={confirm}
+          >
+            {mutation.isPending ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <Trash aria-hidden="true" />}
+            {mutation.isPending ? "O‘chirilmoqda…" : "Butunlay o‘chirish"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export default function AdminSeasonsPage() {
-  const { seasons, seasonId, setSeasonId } = useSeason()
+  const { seasons, seasonId, setSeasonId, isLoading } = useSeason()
   const [params] = useSearchParams()
   const [newOpen, setNewOpen] = useState(params.get("yangi") === "1")
   const [finishing, setFinishing] = useState<Season | null>(null)
+  const [deleting, setDeleting] = useState<Season | null>(null)
   const { data: me } = useMe()
   const activate = useAdminMutation((id: string) => api.activateSeason(id))
 
@@ -185,9 +296,9 @@ export default function AdminSeasonsPage() {
     <div className="mx-auto max-w-4xl">
       <AdminPageHeader
         title="Mavsumlar"
-        description="Har bir mavsum ma’lumotlari alohida saqlanadi. Eski mavsumlar o‘chirilmaydi — ular arxiv sifatida saytda ko‘rinadi."
+        description="Har bir mavsum ma’lumotlari alohida saqlanadi. Yakunlangan mavsumlar o‘chirilmaydi — ular arxiv sifatida saytda ko‘rinadi. Sinov mavsumi saytda ko‘rinmaydi va sinab bo‘lgach butunlay o‘chiriladi."
         actions={
-          <Button onClick={() => setNewOpen(true)}>
+          <Button onClick={() => setNewOpen(true)} disabled={isLoading}>
             <Plus aria-hidden="true" />
             Yangi mavsum
           </Button>
@@ -204,7 +315,10 @@ export default function AdminSeasonsPage() {
       )}
       <ul className="space-y-3">
         {seasons.map((s) => (
-          <li key={s.id} className={cn("panel flex flex-col gap-3 p-4 sm:flex-row sm:items-center", s.id === seasonId && "border-pitch-300")}>
+          <li
+            key={s.id}
+            className={cn("panel flex flex-col gap-3 p-4 sm:flex-row sm:items-center", s.test && "border-dashed border-gold", s.id === seasonId && !s.test && "border-pitch-300")}
+          >
             <CalendarRange className="hidden size-6 text-muted-foreground sm:block" aria-hidden="true" />
             <div className="min-w-0 flex-1">
               <p className="font-display text-xl">
@@ -213,7 +327,14 @@ export default function AdminSeasonsPage() {
               <p className="text-sm text-muted-foreground">
                 {formatDate(s.startDate)} — {formatDate(s.endDate)}, {s.rules.legs === 2 ? "ikki davrali" : "bir davrali"}
               </p>
+              {s.test && <p className="mt-1 text-xs text-gold-text">Saytda ko‘rinmaydi. Sinab bo‘lgach, o‘chirib tashlang.</p>}
             </div>
+            {s.test && (
+              <span className="inline-flex w-fit items-center gap-1 rounded-full border border-dashed border-gold px-2.5 py-0.5 text-xs font-semibold text-gold-text">
+                <FlaskConical className="size-3.5" aria-hidden="true" />
+                Sinov
+              </span>
+            )}
             <span
               className={cn(
                 "w-fit rounded-full px-2.5 py-0.5 text-xs font-semibold",
@@ -240,12 +361,20 @@ export default function AdminSeasonsPage() {
                   Yakunlash
                 </Button>
               )}
+              {isSuperAdmin(me?.role) && (s.test || s.status === "DRAFT") && (
+                <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setDeleting(s)} aria-label={`«${s.name}»ni o‘chirish`}>
+                  <Trash aria-hidden="true" />
+                  O‘chirish
+                </Button>
+              )}
             </div>
           </li>
         ))}
       </ul>
-      {newOpen && <NewSeasonDialog open={newOpen} onOpenChange={setNewOpen} seasons={seasons} />}
+      {/* Oyna ro'yxat yuklangach ochiladi — nom, yil va jamoalar taklifi to'g'ri bo'lsin */}
+      {newOpen && !isLoading && <NewSeasonDialog open={newOpen} onOpenChange={setNewOpen} seasons={seasons} />}
       {finishing && <FinishDialog season={finishing} open={Boolean(finishing)} onOpenChange={(v) => !v && setFinishing(null)} />}
+      {deleting && <DeleteSeasonDialog key={deleting.id} season={deleting} seasons={seasons} open={Boolean(deleting)} onOpenChange={(v) => !v && setDeleting(null)} />}
     </div>
   )
 }

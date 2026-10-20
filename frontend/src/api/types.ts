@@ -268,6 +268,31 @@ export interface SeasonInput {
   endDate: string
   rules: SeasonRules
   copyTeamsFromSeasonId?: ID | null
+  /** Sinov mavsumi — saytda ko'rinmaydi, keyin butunlay o'chiriladi */
+  test?: boolean
+}
+
+/** Mavsumni o'chirishdan oldin: nimalar o'chadi va o'chirish mumkinmi */
+export interface SeasonDeletePreview {
+  seasonId: ID
+  name: string
+  test: boolean
+  canDelete: boolean
+  problem: string | null
+  teams: number
+  /** Faqat shu mavsumda qatnashgan — butunlay o'chadi */
+  teamsRemoved: number
+  players: number
+  playersRemoved: number
+  matches: number
+  results: number
+}
+
+export interface SeasonDeleted {
+  name: string
+  teams: number
+  players: number
+  matches: number
 }
 
 export interface NewsInput {
@@ -321,6 +346,8 @@ export interface LeagueApi {
   // Ommaviy
   getSettings(): Promise<LeagueSettings>
   listSeasons(): Promise<Season[]>
+  /** Admin paneli uchun: sinov mavsumlari bilan */
+  listSeasonsAdmin(): Promise<Season[]>
   getSeasonBundle(seasonId: ID): Promise<SeasonBundle>
   getArchive(): Promise<ArchiveBundle>
   getTeamProfile(teamId: ID): Promise<TeamProfile>
@@ -353,6 +380,9 @@ export interface LeagueApi {
   activateSeason(seasonId: ID): Promise<Season>
   previewFinishSeason(seasonId: ID): Promise<FinishSeasonPreview>
   finishSeason(seasonId: ID): Promise<Season>
+  previewDeleteSeason(seasonId: ID): Promise<SeasonDeletePreview>
+  /** Faqat bosh tashkilotchi; name — tasdiqlash uchun qayta yozilgan mavsum nomi */
+  deleteSeason(seasonId: ID, name: string): Promise<SeasonDeleted>
 
   listTeamsAdmin(seasonId: ID): Promise<AdminTeamRow[]>
   createTeam(input: TeamInput, addToSeasonId?: ID | null): Promise<Team>

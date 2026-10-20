@@ -50,6 +50,8 @@ export interface Season {
   endDate: string
   status: SeasonStatus
   rules: SeasonRules
+  /** Sinov mavsumi: saytda ko'rinmaydi, sinab bo'lgach butunlay o'chiriladi */
+  test?: boolean
 }
 
 export interface Team {

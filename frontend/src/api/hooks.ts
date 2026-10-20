@@ -20,6 +20,8 @@ export const qk = {
   adminPlayers: (seasonId: ID) => ["admin", "players", seasonId] as const,
   roundTeams: (seasonId: ID) => ["admin", "round-teams", seasonId] as const,
   finishPreview: (seasonId: ID) => ["admin", "finish-preview", seasonId] as const,
+  adminSeasons: ["admin", "seasons"] as const,
+  deletePreview: (seasonId: ID) => ["admin", "delete-preview", seasonId] as const,
   report: (seasonId: ID) => ["admin", "report", seasonId] as const,
   audit: ["admin", "audit"] as const,
   venues: ["admin", "venues"] as const,
@@ -28,6 +30,9 @@ export const qk = {
 
 export const useSettings = () => useQuery({ queryKey: qk.settings, queryFn: api.getSettings, staleTime: 5 * 60_000 })
 export const useSeasons = () => useQuery({ queryKey: qk.seasons, queryFn: api.listSeasons, staleTime: 60_000 })
+/** Mavsumlar ro'yxati: saytda — sinov mavsumlarisiz, admin panelda — ular bilan */
+export const useSeasonList = (admin: boolean, enabled = true) =>
+  useQuery({ queryKey: admin ? qk.adminSeasons : qk.seasons, queryFn: admin ? api.listSeasonsAdmin : api.listSeasons, staleTime: 60_000, enabled })
 
 /** Mavsum ma'lumotlari so'rovi — sahifa kodi yuklanishini kutmasdan oldindan boshlash uchun ham ishlatiladi */
 export const seasonBundleQuery = (seasonId: ID) => ({ queryKey: qk.bundle(seasonId), queryFn: () => api.getSeasonBundle(seasonId) })
@@ -65,6 +70,8 @@ export const useAdminRoundTeams = (seasonId: ID | undefined) =>
   useQuery({ queryKey: qk.roundTeams(seasonId ?? ""), queryFn: () => api.listRoundTeams(seasonId!), enabled: Boolean(seasonId) })
 export const useAdminPlayers = (seasonId: ID | undefined) =>
   useQuery({ queryKey: qk.adminPlayers(seasonId ?? ""), queryFn: () => api.listPlayersAdmin(seasonId!), enabled: Boolean(seasonId) })
+export const useSeasonDeletePreview = (seasonId: ID, enabled: boolean) =>
+  useQuery({ queryKey: qk.deletePreview(seasonId), queryFn: () => api.previewDeleteSeason(seasonId), enabled })
 export const useFinishPreview = (seasonId: ID | undefined, enabled: boolean) =>
   useQuery({ queryKey: qk.finishPreview(seasonId ?? ""), queryFn: () => api.previewFinishSeason(seasonId!), enabled: Boolean(seasonId) && enabled })
 export const useReport = (seasonId: ID | undefined) =>

@@ -50,11 +50,20 @@ public final class Dto {
                               Map<Integer, Integer> qualifiersBySize, boolean thirdPlaceMatch, int halfMinutes) {
     }
 
-    public record SeasonDto(UUID id, int number, String name, int year, LocalDate startDate, LocalDate endDate, SeasonStatus status, SeasonRules rules) {
+    public record SeasonDto(UUID id, int number, String name, int year, LocalDate startDate, LocalDate endDate, SeasonStatus status, SeasonRules rules, boolean test) {
         public static SeasonDto of(Season s) {
             return new SeasonDto(s.getId(), s.number, s.name, s.year, s.startDate, s.endDate, s.status,
-                    new SeasonRules(s.pointsWin, s.pointsDraw, s.pointsLoss, s.tiebreakerList(), s.legs, s.qualifiersPerGroup, s.qualifiersBySizeMap(), s.thirdPlaceMatch, s.halfMinutes));
+                    new SeasonRules(s.pointsWin, s.pointsDraw, s.pointsLoss, s.tiebreakerList(), s.legs, s.qualifiersPerGroup, s.qualifiersBySizeMap(), s.thirdPlaceMatch, s.halfMinutes),
+                    s.test);
         }
+    }
+
+    /** Mavsumni o'chirishdan oldin: nimalar o'chadi va o'chirish mumkinmi */
+    public record SeasonDeletePreview(UUID seasonId, String name, boolean test, boolean canDelete, String problem,
+                                      int teams, int teamsRemoved, int players, int playersRemoved, int matches, int results) {
+    }
+
+    public record SeasonDeleted(String name, int teams, int players, int matches) {
     }
 
     public record TeamDto(UUID id, String name, String shortName, String village, String primaryColor, String secondaryColor, Integer founded, boolean active, String logoUrl) {

@@ -69,7 +69,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/password", "/api/auth/telegram", "/api/auth/telegram/**").authenticated()
                         .requestMatchers("/api/auth/**", "/error").permitAll()
                         // Faqat bosh tashkilotchi
-                        .requestMatchers("/api/admin/seasons/*/finish", "/api/admin/settings", "/api/admin/users/**").hasRole("SUPER_ADMIN")
+                        .requestMatchers("/api/admin/seasons/*/finish", "/api/admin/seasons/*/delete", "/api/admin/settings", "/api/admin/users/**").hasRole("SUPER_ADMIN")
                         // Natija kirituvchi faqat natija kiritadi
                         .requestMatchers(HttpMethod.PUT, "/api/admin/matches/*/result").hasAnyRole("SUPER_ADMIN", "ADMIN", "RESULT_ENTRY")
                         // Muharrir: yangiliklar, homiylar va rasm yuklash

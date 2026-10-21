@@ -246,10 +246,6 @@ export default function AdminVisitsPage() {
           />
         </div>
       )}
-      <p className="mt-4 text-xs text-muted-foreground">
-        Raqamlar taxminiy: boshqa telefon yoki brauzerdan kirgan yoki brauzer tarixini tozalagan odam yangi tashrif buyuruvchi bo‘lib sanaladi. «Kuzatmang» sozlamasi
-        yoqilgan brauzerlar sanalmaydi. Ism, telefon yoki IP manzil saqlanmaydi.
-      </p>
     </div>
   )
 }

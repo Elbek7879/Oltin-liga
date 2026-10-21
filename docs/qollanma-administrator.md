@@ -178,7 +178,7 @@ Parol talablari: kamida 10 belgi, harf va raqamlar aralash, ichida login bo‘lm
 - **Kunlik grafik** — so‘nggi 30 kun. Ustunga sichqoncha olib borilsa yoki telefonda bosilsa, o‘sha kun ko‘rinadi. **Jadval ko‘rinishida** — har kun raqamlari.
 - **Eng ko‘p ochilgan sahifalar**, **Qayerdan kelishdi** (Telegram, Instagram, Google va boshqalar) va **Qurilmalar** (telefon yoki kompyuter).
 
-Google robotlari, admin panel va tizimga kirgan tashkilotchilarning o‘zi sanalmaydi — saytni panelga kirgan holda ko‘rsangiz, raqam oshmaydi. Raqamlar taxminiy: boshqa telefon yoki brauzerdan kirgan odam yangi tashrif buyuruvchi bo‘lib sanaladi. Muxlisning ismi, telefoni yoki IP manzili saqlanmaydi; bu haqda saytdagi **Maxfiylik siyosati** sahifasida (har sahifa pastidagi havola) yozilgan.
+Google robotlari, admin panel va tizimga kirgan tashkilotchilarning o‘zi sanalmaydi — saytni panelga kirgan holda ko‘rsangiz, raqam oshmaydi. Muxlisning ismi, telefoni yoki IP manzili saqlanmaydi; bu haqda saytdagi **Maxfiylik siyosati** sahifasida (har sahifa pastidagi havola) yozilgan.
 
 Homiy bilan gaplashganda shu raqamlarni ko‘rsatish mumkin: «saytimizni oyiga N kishi ko‘radi, ularning ko‘pchiligi telefondan».
 

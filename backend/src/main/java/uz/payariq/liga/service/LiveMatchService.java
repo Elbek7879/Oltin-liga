@@ -1,6 +1,7 @@
 package uz.payariq.liga.service;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -79,9 +80,24 @@ public class LiveMatchService {
 
     // ---------- Boshlash va bo'limlar ----------
 
+    /** Boshlanish vaqtidan shuncha o'tgach o'yin jonli boshlanmaydi (kechikkan o'yinlar uchun zaxira bilan) */
+    public static final Duration LATE_START_LIMIT = Duration.ofHours(2);
+
+    /**
+     * O'yin vaqti o'tib ketgan: jonli boshlansa, sayt uni muxlislarga «Jonli» deb ko'rsatadi va gollarga hozirgi
+     * daqiqa yoziladi. Bunday o'yin natijasi saytda kiritiladi (daqiqalar ixtiyoriy).
+     */
+    public boolean isPast(Match m) {
+        return m.kickoff != null && clock.instant().isAfter(m.kickoff.plus(LATE_START_LIMIT));
+    }
+
     public Match start(UUID matchId) {
         Match m = match(matchId);
         if (m.status != MatchStatus.SCHEDULED) throw ApiException.conflict("O‘yin allaqachon boshlangan yoki yakunlangan.");
+        if (isPast(m)) {
+            throw ApiException.conflict("Bu o‘yin vaqti o‘tib ketgan — uni jonli boshlab bo‘lmaydi. Natijani saytdagi «Natijalar» bo‘limida kiriting "
+                    + "(gollar futbolchilar nomiga yoziladi, daqiqalar ixtiyoriy). O‘yin kechiktirilgan bo‘lsa, saytda uning vaqtini o‘zgartiring.");
+        }
         if (m.homeId == null || m.awayId == null) throw ApiException.badRequest("O‘yin jamoalari hali aniqlanmagan.");
         save(m, MatchStatus.LIVE, 0, 0, null, null, null, null, 1, List.of());
         m.livePeriod = LivePeriod.FIRST_HALF;

@@ -126,9 +126,8 @@ public class AdminController {
     }
 
     @PostMapping("/seasons/{seasonId}/players")
-    public ResponseEntity<Void> createPlayer(@PathVariable UUID seasonId, @Valid @RequestBody Requests.PlayerInput in) {
-        teamsPlayers.createPlayer(seasonId, in);
-        return ResponseEntity.noContent().build();
+    public Dto.CreatedId createPlayer(@PathVariable UUID seasonId, @Valid @RequestBody Requests.PlayerInput in) {
+        return new Dto.CreatedId(teamsPlayers.createPlayer(seasonId, in));
     }
 
     /** Jamoa tarkibiga futbolchilarni ro'yxat bilan birdaniga qo'shish */

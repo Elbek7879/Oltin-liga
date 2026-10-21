@@ -347,8 +347,12 @@ public class BotUpdateHandler {
         String base = id + "." + rv;
         switch (m.status) {
             case SCHEDULED -> {
-                if (m.timeConfirmed) kb.row(new Button("▶️ O‘yinni boshlash", "s." + base));
-                else t.append("\nSana belgilanmagan — avval saytda sana va vaqtni belgilang.");
+                if (!m.timeConfirmed) t.append("\nSana belgilanmagan — avval saytda sana va vaqtni belgilang.");
+                // Bot faqat jonli o'yin uchun: vaqti o'tib ketgan o'yin natijasi saytda kiritiladi
+                else if (live.isPast(m)) {
+                    t.append("\n⏰ O‘yin vaqti o‘tib ketgan. Bot faqat jonli o‘yinlar uchun — natijani saytdagi «Natijalar» bo‘limida kiriting: ")
+                            .append("gollar futbolchilar nomiga yoziladi, daqiqalar ixtiyoriy. O‘yin kechiktirilgan bo‘lsa, saytda uning vaqtini o‘zgartiring.");
+                } else kb.row(new Button("▶️ O‘yinni boshlash", "s." + base));
             }
             case LIVE -> {
                 LivePeriod period = m.livePeriod;

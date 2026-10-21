@@ -37,6 +37,7 @@ import uz.payariq.liga.repo.MatchRepository;
 import uz.payariq.liga.telegram.BotUpdateHandler;
 import uz.payariq.liga.telegram.TelegramApi;
 import uz.payariq.liga.telegram.TelegramLinkService;
+import uz.payariq.liga.service.LiveMatchService;
 
 /** Telegram bot soxta Telegram bilan: ulanish, jonli o'yin boshqaruvi va himoyalar */
 @TestPropertySource(properties = {"liga.telegram.enabled=true", "liga.telegram.token=sinov-token", "liga.telegram.username=SinovBot", "liga.telegram.polling=false"})
@@ -78,6 +79,8 @@ class TelegramBotIntegrationTest extends IntegrationTestBase {
     JdbcTemplate jdbc;
     @Autowired
     ObjectMapper mapper;
+    @Autowired
+    LiveMatchService live;
 
     private String matchId;
 
@@ -280,5 +283,44 @@ class TelegramBotIntegrationTest extends IntegrationTestBase {
     private String firstGoalButton() {
         for (JsonNode row : lastMarkup()) for (JsonNode b : row) if (b.get("text").asText().endsWith(" gol")) return b.get("callback_data").asText();
         throw new AssertionError("Gol tugmasi topilmadi");
+    }
+
+    /** Oxirgi tahrirlangan panel matni */
+    private String lastPanelText() {
+        for (int i = CALLS.size() - 1; i >= 0; i--) if (CALLS.get(i).method().equals("editMessageText")) return CALLS.get(i).params().path("text").asText();
+        return "";
+    }
+
+    @Test
+    @DisplayName("vaqti o'tib ketgan o'yin: bot jonli boshlamaydi, natija ertasi kuni saytda gol mualliflari bilan kiritiladi")
+    void pastMatchIsNotStartedLive() throws Exception {
+        setUpMatchToday();
+        // Kecha kechqurun bo'lgan o'yin, natijasi ertasi kuni kiritilmoqda
+        String yesterday = OffsetDateTime.now(ZoneOffset.ofHours(5)).minusDays(1).withHour(20).withMinute(0).truncatedTo(ChronoUnit.MINUTES).toString();
+        putJson("/api/admin/matches/" + matchId + "/schedule", Map.of("kickoff", yesterday));
+        linkChat();
+        CALLS.clear();
+
+        // Kechagi tugallanmagan o'yin ro'yxatda turadi, lekin «O'yinni boshlash» tugmasi yo'q
+        handler.handle(message(CHAT, "Bugungi o‘yinlar"));
+        press(button("Qizil Qishloq"));
+        assertThat(lastPanelText()).contains("vaqti o‘tib ketgan").contains("«Natijalar» bo‘limida");
+        for (JsonNode row : lastMarkup()) for (JsonNode b : row) assertThat(b.get("text").asText()).doesNotContain("O‘yinni boshlash");
+        // Eski tugma yoki boshqa yo'l bilan ham jonli boshlanmaydi
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> live.start(java.util.UUID.fromString(matchId))).hasMessageContaining("vaqti o‘tib ketgan");
+        assertThat(match().status).isEqualTo(MatchStatus.SCHEDULED);
+
+        // Saytda: gol futbolchi nomiga yoziladi, daqiqasiz
+        Match m = match();
+        String scorer = jdbc.queryForObject("select player_id from season_rosters where season_team_id = ? limit 1", String.class, m.homeId);
+        Map<String, Object> result = new java.util.LinkedHashMap<>();
+        result.put("status", "FINISHED");
+        result.put("homeScore", 1);
+        result.put("awayScore", 0);
+        result.put("events", List.of(Map.of("type", "GOAL", "seasonTeamId", m.homeId.toString(), "playerId", scorer)));
+        putJson("/api/admin/matches/" + matchId + "/result", result);
+        assertThat(match().status).isEqualTo(MatchStatus.FINISHED);
+        assertThat(jdbc.queryForObject("select count(*) from match_events where match_id = ? and player_id = ? and minute is null", Integer.class,
+                java.util.UUID.fromString(matchId), java.util.UUID.fromString(scorer))).isEqualTo(1);
     }
 }

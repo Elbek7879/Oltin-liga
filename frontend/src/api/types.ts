@@ -391,7 +391,8 @@ export interface LeagueApi {
   setTeamInSeason(teamId: ID, seasonId: ID, inSeason: boolean): Promise<void>
 
   listPlayersAdmin(seasonId: ID): Promise<AdminPlayerRow[]>
-  createPlayer(seasonId: ID, input: PlayerInput): Promise<void>
+  /** Qaytaradi: yangi futbolchi id (natija kiritishda gol darhol uning nomiga yoziladi) */
+  createPlayer(seasonId: ID, input: PlayerInput): Promise<{ id: ID }>
   /** Jamoa tarkibiga futbolchilarni ro'yxat bilan birdaniga qo'shish */
   createPlayers(seasonId: ID, input: { seasonTeamId: ID; players: PlayerRowInput[] }): Promise<{ created: number }>
   updatePlayer(seasonId: ID, playerId: ID, input: PlayerInput): Promise<void>

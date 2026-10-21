@@ -47,7 +47,10 @@ function PlayerFormDialog({
   teams: { id: string; name: string }[]
 }) {
   const { seasonId } = useSeason()
-  const mutation = useAdminMutation((input: PlayerInput) => (player ? api.updatePlayer(seasonId!, player.id, input) : api.createPlayer(seasonId!, input)))
+  const mutation = useAdminMutation(async (input: PlayerInput) => {
+    if (player) await api.updatePlayer(seasonId!, player.id, input)
+    else await api.createPlayer(seasonId!, input)
+  })
   const defaults = (): Values => ({
     firstName: player?.firstName ?? "",
     lastName: player?.lastName ?? "",

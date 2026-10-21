@@ -86,7 +86,8 @@ class SeasonFlowIntegrationTest extends IntegrationTestBase {
                 perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/admin/seasons/" + seasonId + "/players"),
                         Map.of("firstName", "Futbolchi", "lastName", "Raqam" + n, "position", "FW", "seasonTeamId", st, "number", k,
                                 "phone", "+998 90 123 45 6" + (n % 10)), asAdmin())
-                        .andExpect(status().isNoContent());
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.id").isNotEmpty());
             }
         }
         for (JsonNode r : bundle().get("rosters")) firstPlayerOf.putIfAbsent(r.get("seasonTeamId").asText(), r.get("playerId").asText());

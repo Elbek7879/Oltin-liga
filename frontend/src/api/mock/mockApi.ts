@@ -1086,7 +1086,7 @@ export const mockApi: LeagueApi = {
     }
     audit(db, "Futbolchi", `${player.firstName} ${player.lastName} qo‘shildi`)
     save()
-    return delay(undefined)
+    return delay({ id: player.id })
   },
 
   async createPlayers(seasonId, input) {

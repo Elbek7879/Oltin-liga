@@ -1,9 +1,14 @@
-import { Ban } from "lucide-react"
-import { useEffect, useState } from "react"
+import { Ban, LoaderCircle, UserPlus } from "lucide-react"
+import { useEffect, useId, useState, type FormEvent } from "react"
+import { toast } from "sonner"
+import { api } from "@/api/client"
+import { useAdminMutation } from "@/api/hooks"
 import { CardIcon } from "@/components/league/icons"
 import { TeamCrest } from "@/components/league/team-crest"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import type { TeamView } from "@/api/types"
 import type { ID } from "@/domain/types"
 import type { SeasonIndex } from "@/hooks/use-season-data"
@@ -46,6 +51,70 @@ function Segmented<T extends string>({ value, onChange, options, label }: { valu
 }
 
 /**
+ * Ro'yxatda yo'q futbolchini shu yerning o'zida jamoaga qo'shish (ism, familiya, raqam).
+ * Saqlangach futbolchi tarkibga yoziladi va onCreated orqali gol yoki kartochka darhol uning nomiga beriladi.
+ */
+function NewPlayerForm({ team, seasonId, action, onCreated, onCancel }: { team: TeamView; seasonId: ID; action: string; onCreated: (id: ID) => void; onCancel: () => void }) {
+  const uid = useId()
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
+  const [number, setNumber] = useState("")
+  const [error, setError] = useState<string | null>(null)
+  const create = useAdminMutation((input: { firstName: string; lastName: string; number: number | null }) =>
+    api.createPlayer(seasonId, { ...input, position: null, seasonTeamId: team.id }),
+  )
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    const first = firstName.trim()
+    const last = lastName.trim()
+    if (first.length < 2 || last.length < 2) return setError("Ism va familiyani kiriting (kamida 2 ta harf).")
+    const n = number.trim() ? Number(number) : null
+    if (n !== null && (!Number.isInteger(n) || n < 1 || n > 99)) return setError("Raqam 1 dan 99 gacha bo‘lsin yoki bo‘sh qoldiring.")
+    try {
+      const { id } = await create.mutateAsync({ firstName: first, lastName: last, number: n })
+      toast.success(`${first} ${last} ${team.name} tarkibiga qo‘shildi`)
+      onCreated(id)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Futbolchini qo‘shib bo‘lmadi.")
+    }
+  }
+  return (
+    <form onSubmit={submit} className="space-y-3 rounded-xl border border-border bg-muted/40 p-3" aria-label={`${team.name}: yangi futbolchi`}>
+      <p className="text-sm font-semibold">Yangi futbolchi: {team.name}</p>
+      <div className="grid gap-3 sm:grid-cols-[1fr_1fr_6rem]">
+        <div className="space-y-1">
+          <Label htmlFor={`${uid}-first`}>Ism</Label>
+          <Input id={`${uid}-first`} value={firstName} onChange={(e) => setFirstName(e.target.value)} autoComplete="off" autoFocus />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor={`${uid}-last`}>Familiya</Label>
+          <Input id={`${uid}-last`} value={lastName} onChange={(e) => setLastName(e.target.value)} autoComplete="off" />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor={`${uid}-number`}>Raqam</Label>
+          <Input id={`${uid}-number`} value={number} onChange={(e) => setNumber(e.target.value)} inputMode="numeric" maxLength={2} placeholder="—" />
+        </div>
+      </div>
+      {error && (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" disabled={create.isPending}>
+          {create.isPending ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <UserPlus aria-hidden="true" />}
+          {create.isPending ? "Qo‘shilmoqda…" : action}
+        </Button>
+        <Button type="button" variant="ghost" onClick={onCancel} disabled={create.isPending}>
+          Bekor qilish
+        </Button>
+      </div>
+    </form>
+  )
+}
+
+/**
  * Tezkor kiritish: jamoa o'yinchilaridan birini bosish bilan gol yoki kartochka yoziladi.
  * Gol tanlansa hisob ham o'zi bittaga oshadi (bu mantiq chaqiruvchida).
  */
@@ -76,10 +145,12 @@ export function QuickEventDialog({
 }) {
   const [goalKind, setGoalKind] = useState<QuickGoalKind>("GOAL")
   const [cardKind, setCardKind] = useState<QuickCardKind>("YELLOW")
+  const [adding, setAdding] = useState(false)
   useEffect(() => {
     if (open) {
       setGoalKind("GOAL")
       setCardKind("YELLOW")
+      setAdding(false)
     }
   }, [open])
 
@@ -124,7 +195,7 @@ export function QuickEventDialog({
 
         {list.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
-            {listTeam.name} tarkibida futbolchi yo‘q. Ularni «Futbolchilar» bo‘limida qo‘shing{mode === "goal" ? " yoki «Muallif noma’lum»ni tanlang" : ""}.
+            {listTeam.name} tarkibida futbolchi yo‘q. «Yangi futbolchi» tugmasi bilan shu yerning o‘zida qo‘shing{mode === "goal" ? " yoki «Muallif noma’lum»ni tanlang" : ""}.
           </p>
         ) : (
           <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2" aria-label={`${listTeam.name} o‘yinchilari`}>
@@ -157,10 +228,27 @@ export function QuickEventDialog({
             })}
           </ul>
         )}
-        {mode === "goal" && (
-          <Button type="button" variant="outline" onClick={() => pick(null)}>
-            Muallif noma’lum
-          </Button>
+        {adding ? (
+          <NewPlayerForm
+            key={listTeam.id}
+            team={listTeam}
+            seasonId={index.bundle.season.id}
+            action={mode === "goal" ? "Qo‘shish va gol yozish" : "Qo‘shish va kartochka berish"}
+            onCreated={(id) => pick(id)}
+            onCancel={() => setAdding(false)}
+          />
+        ) : (
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Button type="button" variant="outline" onClick={() => setAdding(true)}>
+              <UserPlus aria-hidden="true" />
+              Yangi futbolchi
+            </Button>
+            {mode === "goal" && (
+              <Button type="button" variant="outline" onClick={() => pick(null)}>
+                Muallif noma’lum
+              </Button>
+            )}
+          </div>
         )}
       </DialogContent>
     </Dialog>

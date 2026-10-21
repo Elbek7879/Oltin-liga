@@ -159,7 +159,8 @@ public class TeamPlayerService {
 
     // ---------- Futbolchilar ----------
 
-    public void createPlayer(UUID seasonId, Requests.PlayerInput in) {
+    /** Futbolchi qo'shadi; qaytaradi: yangi futbolchi id (natija kiritishda gol darhol uning nomiga yoziladi) */
+    public UUID createPlayer(UUID seasonId, Requests.PlayerInput in) {
         Player p = new Player();
         apply(p, in);
         players.save(p);
@@ -168,6 +169,7 @@ public class TeamPlayerService {
             assignRoster(seasonId, p, in.seasonTeamId(), in.number());
         }
         audit.record("Futbolchi", p.fullName() + " qo‘shildi", "PLAYER", p.getId());
+        return p.getId();
     }
 
     /**

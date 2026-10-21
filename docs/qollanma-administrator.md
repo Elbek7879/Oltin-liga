@@ -71,6 +71,8 @@ Odatdagi tartib:
 
 1. **Natijalar** bo‘limida o‘yinni tanlang.
 2. **Eng tez usul — «Gol» tugmasi.** Jamoa hisobi ostidagi **Gol** tugmasini bosing — shu jamoa futbolchilari chiqadi. Gol urganni bosing: hisob o‘zi bittaga oshadi va gol uning nomiga yoziladi (to‘purarlar ro‘yxatida darhol ko‘rinadi). Yuqorida gol turini tanlash mumkin: **Gol**, **Penalti**, **Avtogol** (avtogolda raqib futbolchilari chiqadi). Muallif ma’lum bo‘lmasa — **Muallif noma’lum**.
+   - Gol urgan futbolchi jamoa ro‘yxatida yo‘q bo‘lsa, shu oynadagi **Yangi futbolchi** tugmasini bosing: ism, familiya va raqamini (ixtiyoriy) yozib **Qo‘shish va gol yozish**ni bosing. Futbolchi jamoaga qo‘shiladi va gol darhol uning nomiga yoziladi. Kartochka oynasida ham xuddi shunday.
+   - **Muallif noma’lum** deb yozilgan golni keyin ham futbolchiga o‘tkazish mumkin: futbolchini qo‘shing, o‘yinni **Natijalar**da qayta oching, gol qatoridagi «Gol muallifi»dan uni tanlab saqlang.
 3. **Kartochka** tugmasi xuddi shunday: turini (**Sariq**, **Ikkinchi sariq**, **Qizil**) tanlab, futbolchini bosing.
 4. O‘yin «Jonli» holatda bo‘lsa, joriy daqiqa o‘zi yoziladi. Daqiqa, assist va boshqa tafsilotlarni pastdagi ro‘yxatda tuzatish mumkin. «+» va «−» tugmalari ham ishlaydi.
 5. Pastda tekshiruv natijasi chiqadi. «Ma’lumotlar mos. Saqlashga tayyor» yozuvi bo‘lsa, **Natijani saqlash** tugmasini bosing.
@@ -111,6 +113,8 @@ Stadionda turib gollarni telefondan kiritish uchun **@payariq_OltinLiga_bot** bo
 6. **🏁 O‘yin tugadi** → tasdiqlang. Jadval, to‘purarlar va setka o‘zi yangilanadi.
 
 Har bir amal saytda **darhol** ko‘rinadi: o‘yin sahifasini ochib turgan muxlislarda «GOL!» xabari chiqadi, hisob o‘zi yangilanadi. Tugma ikki marta bosilsa ham gol bir marta yoziladi. Bot orqali qilingan har bir amal «O‘zgarishlar tarixi»da «(Telegram)» belgisi bilan turadi.
+
+**Bot faqat jonli o‘yin uchun.** O‘yin boshlanish vaqtidan 2 soatdan ko‘p o‘tgan bo‘lsa (masalan, kecha kechqurun bo‘lgan o‘yin), bot uni jonli boshlamaydi: aks holda sayt eski o‘yinni muxlislarga «Jonli» deb ko‘rsatar va gollarga hozirgi daqiqa yozilar edi. Bunday o‘yin natijasini saytdagi **Natijalar** bo‘limida kiriting — gollar futbolchilar nomiga yoziladi, daqiqa ixtiyoriy. O‘yin kechiktirilgan bo‘lsa, avval saytda uning vaqtini o‘zgartiring. Ro‘yxatda yo‘q futbolchi va «noma’lum» golning muallifi ham saytda belgilanadi.
 
 Bir bo‘lim davomiyligi (daqiqa hisobi uchun) **Sozlamalar → Bir bo‘lim davomiyligi**da o‘zgartiriladi (standart 20 daqiqa — o‘yin 2 × 20).
 
@@ -177,6 +181,10 @@ Sayt tepasida (tun/kun rejimi tugmasi yonida) **Кирилл** tugmasi bor — b
 ## 9. Ko‘p beriladigan savollar
 
 **Natijani xato kiritdim.** O‘yinni qayta oching, tuzating va saqlang. Jadval qayta hisoblanadi.
+
+**Kechagi o‘yin natijasini bugun kiritmoqchiman.** **Natijalar** bo‘limida o‘yinni oching, **Gol** tugmalari bilan gol urganlarni belgilang (daqiqa ixtiyoriy), holatini **Yakunlangan** qilib saqlang. Bot orqali emas: u vaqti o‘tib ketgan o‘yinni jonli boshlamaydi.
+
+**Gol urgan futbolchi jamoa ro‘yxatida yo‘q.** Gol oynasidagi **Yangi futbolchi** tugmasi bilan shu yerning o‘zida qo‘shing — gol darhol uning nomiga yoziladi.
 
 **Jadvalda jamoa yonida `*` belgisi bor.** Bu teng ochkoli jamoalarni nizomdagi barcha mezonlar ham ajrata olmaganini bildiradi. Guruh bosqichi tugagach, **Pley-off** bo‘limida **Qur’a tashlash** tugmasi chiqadi — qur’adan keyin o‘rinlar aniqlanadi.
 

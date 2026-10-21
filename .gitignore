@@ -16,3 +16,6 @@ backend/uploads/
 
 # Zaxira nusxalar (scripts/backup.ps1)
 backups/
+
+# Sotuv hujjatlari: ichida shaxsiy aloqa ma'lumotlari bor — ochiq repoga tushmasin
+tijorat-taklifi/

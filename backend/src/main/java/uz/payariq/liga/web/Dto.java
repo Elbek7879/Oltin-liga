@@ -274,6 +274,9 @@ public final class Dto {
     public record Created(int created) {
     }
 
+    public record CreatedId(UUID id) {
+    }
+
     public record MediaDto(String url) {
     }
 

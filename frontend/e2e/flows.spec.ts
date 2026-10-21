@@ -263,6 +263,38 @@ test.describe("Admin paneli", () => {
     expect(errors).toEqual([])
   })
 
+  test("ro‘yxatda yo‘q futbolchi gol oynasining o‘zidan qo‘shiladi va gol uning nomiga yoziladi", async ({ page }) => {
+    const errors = collectErrors(page)
+    const lastName = `Yangiboyev${Date.now().toString(36).slice(-3)}`
+    await loginAsAdmin(page)
+    await page.goto("/admin/natijalar")
+    const item = page.locator('[data-testid="admin-match"][data-status="SCHEDULED"]').first()
+    const homeName = (await item.getAttribute("data-home-name"))!
+    await item.getByRole("link", { name: "Natija kiritish" }).click()
+    await page.getByRole("button", { name: `${homeName}: gol qo‘shish` }).click()
+    const dialog = page.getByRole("dialog")
+    await dialog.getByRole("button", { name: "Yangi futbolchi" }).click()
+    const form = dialog.getByRole("form", { name: `${homeName}: yangi futbolchi` })
+    // Noto'g'ri raqam tushunarli xabar bilan rad etiladi, oyna yopilmaydi
+    await form.getByLabel("Ism").fill("Sardorbek")
+    await form.getByLabel("Familiya").fill(lastName)
+    await form.getByLabel("Raqam").fill("0")
+    await form.getByRole("button", { name: "Qo‘shish va gol yozish" }).click()
+    await expect(form.getByRole("alert")).toContainText("1 dan 99 gacha")
+    await form.getByLabel("Raqam").fill("88")
+    await form.getByRole("button", { name: "Qo‘shish va gol yozish" }).click()
+    await expect(page.getByText(`Sardorbek ${lastName} ${homeName} tarkibiga qo‘shildi`)).toBeVisible()
+    await expect(dialog).toBeHidden()
+    await expect(page.locator(`output[aria-label="${homeName} gollari"]`)).toHaveText("1")
+    await expect(page.getByRole("combobox", { name: "Gol muallifi" }).first()).toContainText(`Sardorbek ${lastName}`)
+    await page.getByRole("button", { name: "Natijani saqlash" }).click()
+    await expect(page.getByText("Natija saqlandi. Jadval va statistika yangilandi.")).toBeVisible()
+    // Futbolchi jamoa tarkibida, gol esa to'purarlar ro'yxatida
+    await page.goto("/statistika")
+    await expect(page.getByRole("link", { name: `Sardorbek ${lastName}` }).first()).toBeVisible()
+    expect(errors).toEqual([])
+  })
+
   test("bayonnoma chop etishga tayyor: tarkiblar va bo‘sh kataklar", async ({ page }) => {
     await loginAsAdmin(page)
     await page.goto("/admin/natijalar")

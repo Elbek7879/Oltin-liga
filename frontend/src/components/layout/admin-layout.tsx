@@ -2,6 +2,7 @@ import {
   CalendarDays,
   CircleUserRound,
   ChartColumn,
+  ChartLine,
   ClipboardList,
   ExternalLink,
   FlaskConical,
@@ -66,6 +67,7 @@ const NAV_GROUPS = [
     title: "Tizim",
     items: [
       { to: "/admin/hisobotlar", label: "Hisobotlar", icon: ChartColumn },
+      { to: "/admin/tashriflar", label: "Tashriflar", icon: ChartLine },
       { to: "/admin/sozlamalar", label: "Sozlamalar", icon: Settings },
     ],
   },
@@ -182,7 +184,7 @@ function FirstSeasonPrompt({ role }: { role: AdminRole }) {
   )
 }
 
-const WITHOUT_SEASON = ["/admin/mavsumlar", "/admin/sozlamalar", "/admin/yangiliklar", "/admin/homiylar", "/admin/hisobim"]
+const WITHOUT_SEASON = ["/admin/mavsumlar", "/admin/sozlamalar", "/admin/yangiliklar", "/admin/homiylar", "/admin/hisobim", "/admin/tashriflar"]
 
 /** Sidebar pastidagi akkaunt havolasi: ism, rol va «Hisobim» sahifasi */
 function AccountLink({ name, role, tone, onNavigate }: { name: string; role: AdminRole; tone: "band" | "plain"; onNavigate?: () => void }) {

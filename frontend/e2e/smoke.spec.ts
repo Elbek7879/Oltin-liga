@@ -10,7 +10,7 @@ import { loginAsAdmin } from "./helpers"
  */
 
 const WIDTHS = [375, 768, 1440]
-const PUBLIC = ["/", "/oyinlar", "/oyinlar?tab=natijalar", "/jadval", "/pley-off", "/jamoalar", "/futbolchilar", "/statistika", "/ramziy-jamoa", "/yangiliklar", "/mavsumlar", "/chempionlar", "/homiylar", "/liga-haqida", "/nizom"]
+const PUBLIC = ["/", "/oyinlar", "/oyinlar?tab=natijalar", "/jadval", "/pley-off", "/jamoalar", "/futbolchilar", "/statistika", "/ramziy-jamoa", "/yangiliklar", "/mavsumlar", "/chempionlar", "/homiylar", "/liga-haqida", "/nizom", "/maxfiylik"]
 const ADMIN = [
   "/admin",
   "/admin/mavsumlar",
@@ -24,6 +24,7 @@ const ADMIN = [
   "/admin/yangiliklar",
   "/admin/homiylar",
   "/admin/hisobotlar",
+  "/admin/tashriflar",
   "/admin/sozlamalar",
   "/admin/sozlamalar?tab=foydalanuvchilar",
   "/admin/hisobim",
@@ -200,7 +201,7 @@ test.describe("Rollar: har bir yordamchi faqat o‘z bo‘limlarini ko‘radi va
 
   const ROLES = [
     { role: "ADMIN", open: ADMIN.filter((u) => !u.startsWith("/admin/sozlamalar")), closed: [] as string[] },
-    { role: "RESULT_ENTRY", open: ["/admin", "/admin/natijalar", "/admin/hisobotlar", "/admin/hisobim"], closed: ["/admin/jamoalar", "/admin/oyinlar", "/admin/ramziy-jamoa", "/admin/yangiliklar", "/admin/sozlamalar"] },
+    { role: "RESULT_ENTRY", open: ["/admin", "/admin/natijalar", "/admin/hisobotlar", "/admin/hisobim"], closed: ["/admin/jamoalar", "/admin/oyinlar", "/admin/ramziy-jamoa", "/admin/yangiliklar", "/admin/sozlamalar", "/admin/tashriflar"] },
     { role: "EDITOR", open: ["/admin", "/admin/yangiliklar", "/admin/homiylar", "/admin/hisobim"], closed: ["/admin/jamoalar", "/admin/natijalar", "/admin/guruhlar", "/admin/ramziy-jamoa", "/admin/sozlamalar"] },
   ] as const
   const missing = "00000000-0000-0000-0000-000000000000"

@@ -342,6 +342,38 @@ export interface ReportData {
   teams: TeamView[]
 }
 
+/** Tashrif statistikasi: visitors — noyob odamlar, views — sahifa ochilishlari */
+export interface VisitCount {
+  visitors: number
+  views: number
+}
+
+export interface VisitStats {
+  today: VisitCount
+  /** So'nggi 7 kun (bugun bilan) */
+  week: VisitCount
+  /** So'nggi 30 kun (bugun bilan) */
+  month: VisitCount
+  total: VisitCount
+  /** Birinchi tashrif kuni (YYYY-MM-DD); hali tashrif bo'lmasa — null */
+  since: string | null
+  /** So'nggi 30 kun, eskisidan yangisiga; tashrif bo'lmagan kunlar — nol */
+  daily: { day: string; visitors: number; views: number }[]
+  /** So'nggi 30 kunda eng ko'p ochilgan 10 sahifa */
+  pages: { path: string; label: string; views: number }[]
+  /** So'nggi 30 kun: key — telegram, instagram, google, yandex, youtube, facebook, other, direct; visits — kunlik tashriflar */
+  sources: { key: string; visits: number }[]
+  /** key — phone yoki desktop */
+  devices: { key: string; visits: number }[]
+}
+
+/** Sahifa ochildi: referrer faqat sayt ochilgandagi birinchi sahifada yuboriladi */
+export interface VisitInput {
+  path: string
+  referrer: string
+  visitor: string
+}
+
 export interface LeagueApi {
   // Ommaviy
   getSettings(): Promise<LeagueSettings>
@@ -356,6 +388,8 @@ export interface LeagueApi {
   listNews(options?: { includeDrafts?: boolean }): Promise<News[]>
   getNews(slug: string): Promise<News>
   listSponsors(options?: { includeInactive?: boolean }): Promise<Sponsor[]>
+  /** Tashrif statistikasi uchun: javob kutilmaydi, xato muxlisga ko'rsatilmaydi */
+  trackVisit(input: VisitInput): void
 
   // Avtorizatsiya
   login(username: string, password: string): Promise<AdminUser>
@@ -427,6 +461,8 @@ export interface LeagueApi {
   deleteAdjustment(id: ID): Promise<void>
 
   getReport(seasonId: ID): Promise<ReportData>
+  /** Bosh tashkilotchi va administrator */
+  getVisitStats(): Promise<VisitStats>
   listAudit(): Promise<AuditEntry[]>
   updateSettings(settings: LeagueSettings): Promise<LeagueSettings>
   listVenues(): Promise<Venue[]>

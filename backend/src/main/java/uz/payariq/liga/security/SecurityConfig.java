@@ -53,7 +53,8 @@ public class SecurityConfig {
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, SecurityContextRepository contextRepository, AppUserRepository users) throws Exception {
         http
-                .csrf(csrf -> csrf.spa())
+                // Tashrif hisobi brauzerdan sendBeacon bilan keladi (sarlavha qo'yib bo'lmaydi); u hech narsani o'zgartirmaydi va ruxsat bermaydi
+                .csrf(csrf -> csrf.spa().ignoringRequestMatchers("/api/public/visit"))
                 .addFilterAfter(new CsrfCookieFilter(), CsrfFilter.class)
                 .addFilterBefore(new ActiveUserFilter(users), AuthorizationFilter.class)
                 .securityContext(ctx -> ctx.securityContextRepository(contextRepository))
@@ -66,6 +67,7 @@ public class SecurityConfig {
                         .referrerPolicy(r -> r.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.SAME_ORIGIN)))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.GET, "/api/public/**", "/media/**", "/actuator/health").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/public/visit").permitAll()
                         .requestMatchers("/api/auth/password", "/api/auth/telegram", "/api/auth/telegram/**").authenticated()
                         .requestMatchers("/api/auth/**", "/error").permitAll()
                         // Faqat bosh tashkilotchi
@@ -74,6 +76,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/admin/matches/*/result").hasAnyRole("SUPER_ADMIN", "ADMIN", "RESULT_ENTRY")
                         // Muharrir: yangiliklar, homiylar va rasm yuklash
                         .requestMatchers("/api/admin/news/**", "/api/admin/sponsors/**", "/api/admin/media/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "EDITOR")
+                        // Tashrif statistikasi — bosh tashkilotchi va administrator
+                        .requestMatchers(HttpMethod.GET, "/api/admin/visits").hasAnyRole("SUPER_ADMIN", "ADMIN")
                         // Boshqaruv panelini o'qish barcha adminlarga ruxsat
                         .requestMatchers(HttpMethod.GET, "/api/admin/**").hasAnyRole(ALL_ADMINS)
                         .requestMatchers("/api/admin/**").hasAnyRole("SUPER_ADMIN", "ADMIN")

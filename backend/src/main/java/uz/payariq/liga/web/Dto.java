@@ -280,6 +280,25 @@ public final class Dto {
     public record MediaDto(String url) {
     }
 
+    /** Tashrif statistikasi: visitors — noyob odamlar, views — sahifa ochilishlari */
+    public record VisitCount(long visitors, long views) {
+    }
+
+    public record VisitDay(LocalDate day, long visitors, long views) {
+    }
+
+    /** label — sahifa nomi (jamoa, futbolchi, o'yin yoki bo'lim) */
+    public record VisitPage(String path, String label, long views) {
+    }
+
+    /** key — manba (telegram, google, …) yoki qurilma (phone, desktop); visits — kunlik tashriflar soni */
+    public record VisitShare(String key, long visits) {
+    }
+
+    public record VisitStats(VisitCount today, VisitCount week, VisitCount month, VisitCount total, LocalDate since,
+                             List<VisitDay> daily, List<VisitPage> pages, List<VisitShare> sources, List<VisitShare> devices) {
+    }
+
     /** Tashkilotchi akkaunti (parol xeshi hech qachon qaytarilmaydi) */
     public record UserDto(UUID id, String username, String displayName, Role role, boolean enabled, Instant lastLoginAt, Instant createdAt) {
         public static UserDto of(AppUser u) {

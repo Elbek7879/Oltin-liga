@@ -27,6 +27,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { useLeagueMeta } from "@/hooks/use-document-meta"
 import { useSeason } from "@/hooks/use-season"
 import { useLiveUpdates } from "@/hooks/use-live-updates"
+import { useVisitTracking } from "@/hooks/use-visit-tracking"
 import { staticMeta } from "@/lib/seo"
 import { cn } from "@/lib/utils"
 import { LeagueMark, Logo, ScriptToggle, SeasonSelect, ThemeToggle } from "./brand"
@@ -250,6 +251,7 @@ function Footer() {
             <li><Link className="hover:text-foreground" to="/liga-haqida">Liga haqida</Link></li>
             <li><Link className="hover:text-foreground" to="/homiylar">Homiy bo‘lish</Link></li>
             <li><Link className="hover:text-foreground" to="/mavsumlar">Arxiv</Link></li>
+            <li><Link className="hover:text-foreground" to="/maxfiylik">Maxfiylik siyosati</Link></li>
             <li><Link className="hover:text-foreground" to="/admin">Tashkilotchilar uchun</Link></li>
           </ul>
         </nav>
@@ -279,7 +281,8 @@ export function PublicLayout() {
   const location = useLocation()
   // Doimiy bo'limlar nomi; jamoa, futbolchi, o'yin va yangilik sahifalari nomini o'zi qo'yadi
   useLeagueMeta((league) => staticMeta(location.pathname, league))
-  const seasonPages = !["/yangiliklar", "/homiylar", "/liga-haqida"].some((p) => location.pathname.startsWith(p))
+  useVisitTracking()
+  const seasonPages = !["/yangiliklar", "/homiylar", "/liga-haqida", "/maxfiylik"].some((p) => location.pathname.startsWith(p))
   const noSeasons = !isLoading && seasons.length === 0 && seasonPages
   return (
     <div className="flex min-h-dvh flex-col">

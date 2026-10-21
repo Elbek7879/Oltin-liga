@@ -24,6 +24,7 @@ export const qk = {
   deletePreview: (seasonId: ID) => ["admin", "delete-preview", seasonId] as const,
   report: (seasonId: ID) => ["admin", "report", seasonId] as const,
   audit: ["admin", "audit"] as const,
+  visits: ["admin", "visits"] as const,
   venues: ["admin", "venues"] as const,
   users: ["admin", "users"] as const,
 }
@@ -77,6 +78,7 @@ export const useFinishPreview = (seasonId: ID | undefined, enabled: boolean) =>
 export const useReport = (seasonId: ID | undefined) =>
   useQuery({ queryKey: qk.report(seasonId ?? ""), queryFn: () => api.getReport(seasonId!), enabled: Boolean(seasonId) })
 export const useAudit = () => useQuery({ queryKey: qk.audit, queryFn: api.listAudit })
+export const useVisitStats = () => useQuery({ queryKey: qk.visits, queryFn: api.getVisitStats, refetchInterval: 60_000 })
 export const useVenues = () => useQuery({ queryKey: qk.venues, queryFn: api.listVenues })
 export const useUsers = () => useQuery({ queryKey: qk.users, queryFn: api.listUsers })
 

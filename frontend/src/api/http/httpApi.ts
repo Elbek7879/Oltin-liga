@@ -87,6 +87,18 @@ export const httpApi: LeagueApi = {
   listNews: (options) => request("GET", options?.includeDrafts ? adm("/news") : pub("/news")),
   getNews: (slug) => request("GET", pub(`/news/${enc(slug)}`)),
   listSponsors: (options) => request("GET", options?.includeInactive ? adm("/sponsors") : pub("/sponsors")),
+  trackVisit: (input) => {
+    const body = JSON.stringify(input)
+    // sendBeacon sahifa yopilayotganda ham yetkazadi va sahifani kuttirmaydi
+    try {
+      if (navigator.sendBeacon?.(pub("/visit"), new Blob([body], { type: "application/json" }))) return
+    } catch {
+      // Brauzer ruxsat bermadi — oddiy so'rov bilan
+    }
+    fetch(pub("/visit"), { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true, credentials: "same-origin" }).catch(
+      () => undefined,
+    )
+  },
 
   // ---------- Avtorizatsiya ----------
   async login(username, password) {
@@ -155,6 +167,7 @@ export const httpApi: LeagueApi = {
   addAdjustment: (seasonId, input) => request("POST", adm(`/seasons/${enc(seasonId)}/adjustments`), input),
   deleteAdjustment: (id) => request("DELETE", adm(`/adjustments/${enc(id)}`)),
   getReport: (seasonId) => request("GET", adm(`/seasons/${enc(seasonId)}/report`)),
+  getVisitStats: () => request("GET", adm("/visits")),
   listAudit: () => request("GET", adm("/audit")),
   updateSettings: (settings) => request("PUT", adm("/settings"), settings),
   listVenues: () => request("GET", adm("/venues")),

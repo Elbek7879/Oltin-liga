@@ -54,7 +54,7 @@ public abstract class IntegrationTestBase {
         jdbc.execute("""
                 truncate table tiebreak_lots, outbox_events, audit_logs, sponsors, news, season_awards, point_adjustments, match_appearances,
                 match_events, matches, venues, group_teams, league_groups, season_rosters, season_teams, players, teams,
-                seasons, app_users restart identity cascade""");
+                seasons, app_users, visit_days, visit_pages restart identity cascade""");
         AppUser admin = new AppUser();
         admin.username = ADMIN;
         passwordHash = encoder.encode(ADMIN_PASSWORD);

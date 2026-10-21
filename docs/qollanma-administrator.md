@@ -170,6 +170,18 @@ Chap menyuning pastidagi ismingizni bosing (**Hisobim** sahifasi). Joriy parolni
 
 Parol talablari: kamida 10 belgi, harf va raqamlar aralash, ichida login bo‘lmasin.
 
+## Tashriflar
+
+**Tashriflar** bo‘limi (chap menyu, «Tizim» guruhi; bosh tashkilotchi va administrator ko‘radi) saytga necha kishi kirganini ko‘rsatadi:
+
+- **Bugun, so‘nggi 7 kun, so‘nggi 30 kun va jami** — necha kishi kirgani va sahifalar necha marta ochilgani. Bir odam kun davomida necha marta kirsa ham bir kishi sanaladi.
+- **Kunlik grafik** — so‘nggi 30 kun. Ustunga sichqoncha olib borilsa yoki telefonda bosilsa, o‘sha kun ko‘rinadi. **Jadval ko‘rinishida** — har kun raqamlari.
+- **Eng ko‘p ochilgan sahifalar**, **Qayerdan kelishdi** (Telegram, Instagram, Google va boshqalar) va **Qurilmalar** (telefon yoki kompyuter).
+
+Google robotlari, admin panel va tizimga kirgan tashkilotchilarning o‘zi sanalmaydi — saytni panelga kirgan holda ko‘rsangiz, raqam oshmaydi. Raqamlar taxminiy: boshqa telefon yoki brauzerdan kirgan odam yangi tashrif buyuruvchi bo‘lib sanaladi. Muxlisning ismi, telefoni yoki IP manzili saqlanmaydi; bu haqda saytdagi **Maxfiylik siyosati** sahifasida (har sahifa pastidagi havola) yozilgan.
+
+Homiy bilan gaplashganda shu raqamlarni ko‘rsatish mumkin: «saytimizni oyiga N kishi ko‘radi, ularning ko‘pchiligi telefondan».
+
 ## Lotin va kirill yozuvi
 
 Sayt tepasida (tun/kun rejimi tugmasi yonida) **Кирилл** tugmasi bor — bosilsa, butun sayt kirillchaga o‘tadi: menyular, jadval, jamoa va futbolchi nomlari, yangiliklar va admin panel. Qaytish — **Lotin** tugmasi. Tanlov shu telefon yoki kompyuterda eslab qolinadi.

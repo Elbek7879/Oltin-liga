@@ -2,7 +2,7 @@ import path from "node:path"
 import { expect, test } from "@playwright/test"
 import { collectErrors, loginAsAdmin, noHorizontalScroll, openNewDraftSeason, TINY_PNG } from "./helpers"
 
-const PUBLIC_PAGES = ["/", "/oyinlar", "/jadval", "/pley-off", "/jamoalar", "/futbolchilar", "/statistika", "/ramziy-jamoa", "/yangiliklar", "/mavsumlar", "/chempionlar", "/homiylar", "/liga-haqida", "/nizom"]
+const PUBLIC_PAGES = ["/", "/oyinlar", "/jadval", "/pley-off", "/jamoalar", "/futbolchilar", "/statistika", "/ramziy-jamoa", "/yangiliklar", "/mavsumlar", "/chempionlar", "/homiylar", "/liga-haqida", "/nizom", "/maxfiylik"]
 
 const KIRILL_OUT = path.resolve(import.meta.dirname, "../../docs/screenshots/10-kirill")
 const CYRILLIC = /[\u0400-\u04FF]/

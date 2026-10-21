@@ -162,6 +162,7 @@ Baza tuzilmasi o‘zgargan bo‘lsa, ilova uni ishga tushishda o‘zi yangilaydi
 - [ ] Bosh tashkilotchi paroli almashtirilgan, `ADMIN_PASSWORD` `.env` dan olib tashlangan.
 - [ ] PostgreSQL superuser (`postgres`) paroli kuchli va hech kimga aytilmagan. Agar u biror joyda (masalan, chatda) yozilgan bo‘lsa, almashtiring.
 - [ ] Zaxira har kuni olinmoqda va haftada bir server tashqarisiga ko‘chirilmoqda.
+- [ ] Saytdagi **Maxfiylik siyosati** (`/maxfiylik`) matnini yurist ko‘rib chiqqan; unda yozilganidek server O‘zbekiston hududida va zaxira har kuni olinadi.
 
 ## 11. Google va Yandex’da chiqish
 

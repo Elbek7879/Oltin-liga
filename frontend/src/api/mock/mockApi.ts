@@ -37,6 +37,8 @@ import { DB_VERSION, type LeagueDb } from "./db"
 import { defaultSeasonRules as defaultRules } from "../defaults"
 import { createSeed } from "./seed"
 import { normalizeSocial, type SocialField } from "@/lib/social"
+import { DEFAULT_LEAGUE, staticMeta } from "@/lib/seo"
+import { mockVisitStats, recordMockVisit } from "./visits"
 
 const STORAGE_KEY = "pol-mock-db"
 const SESSION_KEY = "pol-admin-session"
@@ -680,6 +682,12 @@ export const mockApi: LeagueApi = {
   async listSponsors(options) {
     const db = load()
     return delay(db.sponsors.filter((s) => options?.includeInactive || s.active).sort((a, b) => a.order - b.order))
+  },
+
+  trackVisit(input) {
+    // Serverdagidek: tizimga kirgan tashkilotchi va admin panel sanalmaydi
+    if (currentUser() || input.path.startsWith("/admin")) return
+    recordMockVisit(input)
   },
 
   // ---------- Avtorizatsiya (namunaviy) ----------
@@ -1540,6 +1548,23 @@ export const mockApi: LeagueApi = {
     syncPlayoff(db, a.seasonId)
     save()
     return delay(undefined)
+  },
+
+  async getVisitStats() {
+    requireAdmin()
+    const db = load()
+    const league = db.settings.name || DEFAULT_LEAGUE
+    const label = (path: string) => {
+      if (path === "/") return "Bosh sahifa"
+      const page = staticMeta(path, league)
+      if (page) return page.title.slice(0, -` — ${league}`.length)
+      const id = path.split("/")[2] ?? ""
+      const team = db.teams.find((t) => t.id === id)
+      const player = db.players.find((p) => p.id === id)
+      const news = db.news.find((n) => n.slug === id)
+      return team?.name ?? (player ? `${player.firstName} ${player.lastName}` : (news?.title ?? path))
+    }
+    return delay(mockVisitStats(label))
   },
 
   async getReport(seasonId) {

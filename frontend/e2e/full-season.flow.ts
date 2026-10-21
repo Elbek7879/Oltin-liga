@@ -22,8 +22,8 @@ function isoDate(daysFromToday: number) {
   return d.toISOString().slice(0, 10)
 }
 
-const EMPTY_PUBLIC = ["/", "/oyinlar", "/jadval", "/pley-off", "/jamoalar", "/futbolchilar", "/statistika", "/ramziy-jamoa", "/yangiliklar", "/mavsumlar", "/chempionlar", "/homiylar", "/liga-haqida", "/nizom"]
-const EMPTY_ADMIN = ["/admin", "/admin/mavsumlar", "/admin/jamoalar", "/admin/futbolchilar", "/admin/guruhlar", "/admin/oyinlar", "/admin/natijalar", "/admin/pley-off", "/admin/ramziy-jamoa", "/admin/yangiliklar", "/admin/homiylar", "/admin/hisobotlar", "/admin/sozlamalar", "/admin/hisobim"]
+const EMPTY_PUBLIC = ["/", "/oyinlar", "/jadval", "/pley-off", "/jamoalar", "/futbolchilar", "/statistika", "/ramziy-jamoa", "/yangiliklar", "/mavsumlar", "/chempionlar", "/homiylar", "/liga-haqida", "/nizom", "/maxfiylik"]
+const EMPTY_ADMIN = ["/admin", "/admin/mavsumlar", "/admin/jamoalar", "/admin/futbolchilar", "/admin/guruhlar", "/admin/oyinlar", "/admin/natijalar", "/admin/pley-off", "/admin/ramziy-jamoa", "/admin/yangiliklar", "/admin/homiylar", "/admin/hisobotlar", "/admin/tashriflar", "/admin/sozlamalar", "/admin/hisobim"]
 
 /** Bo'sh baza (yangi o'rnatilgan sayt): har bir sahifa telefonda va kompyuterda xatosiz, tushunarli bo'sh holat bilan ochiladi */
 async function sweepEmpty(page: Page, urls: string[]) {

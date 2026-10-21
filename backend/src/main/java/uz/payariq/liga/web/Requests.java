@@ -212,6 +212,10 @@ public final class Requests {
             @Min(value = 1950, message = "Tug‘ilgan yilni to‘g‘ri kiriting") @Max(value = 2020, message = "Tug‘ilgan yilni to‘g‘ri kiriting") Integer birthYear) {
     }
 
+    /** Sahifa ochildi: manzil, qayerdan kelgani (faqat birinchi sahifada) va brauzerdagi anonim raqam */
+    public record Visit(String path, String referrer, String visitor) {
+    }
+
     public record PlayersBulk(
             @NotNull(message = "Jamoani tanlang") UUID seasonTeamId,
             @NotEmpty(message = "Kamida bitta futbolchi kiriting") @Size(max = 60, message = "Bir martada ko‘pi bilan 60 ta futbolchi") List<@Valid PlayerRow> players) {

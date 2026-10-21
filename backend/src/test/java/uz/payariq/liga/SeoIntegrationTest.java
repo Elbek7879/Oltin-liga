@@ -79,7 +79,7 @@ class SeoIntegrationTest extends IntegrationTestBase {
         // Har bir doimiy sahifaning nomi boshqalarnikidan farq qiladi
         List<String> titles = new ArrayList<>();
         for (String p : List.of("/", "/oyinlar", "/jadval", "/pley-off", "/jamoalar", "/futbolchilar", "/statistika", "/ramziy-jamoa", "/yangiliklar",
-                "/mavsumlar", "/chempionlar", "/homiylar", "/liga-haqida", "/nizom")) {
+                "/mavsumlar", "/chempionlar", "/homiylar", "/liga-haqida", "/nizom", "/maxfiylik")) {
             titles.add(title(html(p, 200)));
         }
         assertThat(titles).doesNotHaveDuplicates();

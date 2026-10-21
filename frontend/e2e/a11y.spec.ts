@@ -9,8 +9,8 @@ import { loginAsAdmin } from "./helpers"
  */
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]
 
-const PUBLIC = ["/", "/oyinlar", "/jadval", "/pley-off", "/jamoalar", "/futbolchilar", "/statistika", "/ramziy-jamoa", "/yangiliklar", "/mavsumlar", "/chempionlar", "/homiylar", "/liga-haqida", "/nizom"]
-const ADMIN = ["/admin", "/admin/natijalar", "/admin/oyinlar", "/admin/guruhlar", "/admin/jamoalar", "/admin/futbolchilar", "/admin/pley-off", "/admin/ramziy-jamoa", "/admin/mavsumlar", "/admin/yangiliklar", "/admin/homiylar", "/admin/hisobotlar", "/admin/sozlamalar", "/admin/sozlamalar?tab=foydalanuvchilar", "/admin/hisobim"]
+const PUBLIC = ["/", "/oyinlar", "/jadval", "/pley-off", "/jamoalar", "/futbolchilar", "/statistika", "/ramziy-jamoa", "/yangiliklar", "/mavsumlar", "/chempionlar", "/homiylar", "/liga-haqida", "/nizom", "/maxfiylik"]
+const ADMIN = ["/admin", "/admin/natijalar", "/admin/oyinlar", "/admin/guruhlar", "/admin/jamoalar", "/admin/futbolchilar", "/admin/pley-off", "/admin/ramziy-jamoa", "/admin/mavsumlar", "/admin/yangiliklar", "/admin/homiylar", "/admin/hisobotlar", "/admin/tashriflar", "/admin/sozlamalar", "/admin/sozlamalar?tab=foydalanuvchilar", "/admin/hisobim"]
 
 async function audit(page: Page, label: string) {
   await page.waitForLoadState("networkidle")

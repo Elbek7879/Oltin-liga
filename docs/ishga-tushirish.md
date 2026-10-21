@@ -162,3 +162,25 @@ Baza tuzilmasi o‘zgargan bo‘lsa, ilova uni ishga tushishda o‘zi yangilaydi
 - [ ] Bosh tashkilotchi paroli almashtirilgan, `ADMIN_PASSWORD` `.env` dan olib tashlangan.
 - [ ] PostgreSQL superuser (`postgres`) paroli kuchli va hech kimga aytilmagan. Agar u biror joyda (masalan, chatda) yozilgan bo‘lsa, almashtiring.
 - [ ] Zaxira har kuni olinmoqda va haftada bir server tashqarisiga ko‘chirilmoqda.
+
+## 11. Google va Yandex’da chiqish
+
+Sayt qidiruv tizimlari uchun tayyor — buni alohida sozlash shart emas:
+
+- Har bir sahifaning o‘z nomi va qisqa tavsifi bor (masalan, «Turnir jadvali — Payariq Oltin Ligasi», jamoa sahifasida jamoa nomi, o‘yin sahifasida «Lochin 2:1 Chinor»). Server sahifani shu nom bilan beradi, shuning uchun Google ham, Telegram’dagi havola kartochkasi ham to‘g‘ri nomni ko‘rsatadi. Liga nomi **Sozlamalar → Liga ma’lumotlari** dan olinadi.
+- `https://sizning-domen.uz/sitemap.xml` — barcha sahifalar ro‘yxati (bo‘limlar, jamoalar, futbolchilar, o‘yinlar, e’lon qilingan yangiliklar). Yangi jamoa yoki yangilik qo‘shilsa, ro‘yxatga o‘zi kiradi.
+- `https://sizning-domen.uz/robots.txt` — admin panel va API qidiruvga yopiq. Admin panel, kirish sahifasi va mavjud bo‘lmagan sahifalar Google’da ko‘rsatilmaydi; mavjud bo‘lmagan manzil 404 qaytaradi.
+- Sinov mavsumi, qoralama yangiliklar va bekor qilingan o‘yinlar ro‘yxatga kirmaydi.
+- `www.sizning-domen.uz` asosiy manzilga yo‘naltiriladi (`deploy/Caddyfile`), Google saytni bitta manzilda ko‘radi.
+
+**Saytni Google’ga tanitish** (sayt HTTPS bilan ochilgandan keyin, bir marta):
+
+1. [Google Search Console](https://search.google.com/search-console) ga Google akkaunti bilan kiring → **Mulk qo‘shish** → **Domen** → `sizning-domen.uz`.
+2. Google bergan `google-site-verification=…` yozuvini nusxalang.
+3. Domen sotib olingan saytda (masalan, sayt.uz) domen boshqaruvi → **DNS** → yangi **TXT** yozuv: nomi `@`, qiymati — nusxalangan matn. Saqlang.
+4. Search Console’da **Tasdiqlash** ni bosing (DNS yangilanishi bir necha daqiqadan bir necha soatgacha olishi mumkin).
+5. **Sitemaps** bo‘limida `sitemap.xml` ni yozib, **Yuborish** ni bosing.
+
+**Yandex** uchun ham xuddi shunday: [Yandex Webmaster](https://webmaster.yandex.ru) → sayt qo‘shish → DNS orqali tasdiqlash → **Indekslash → Sitemap fayllari** ga `https://sizning-domen.uz/sitemap.xml`.
+
+Yangi sayt qidiruvda odatda bir necha kundan 2–3 haftagacha paydo bo‘ladi. Avval liga nomi bo‘yicha qidirganda chiqadi; Search Console’dagi **Sahifalar** hisobotida qaysi sahifalar qo‘shilganini ko‘rish mumkin. Tezlashtirish uchun sayt havolasini Telegram kanali va Instagram profiliga qo‘ying.

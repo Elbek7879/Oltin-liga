@@ -9,7 +9,9 @@ import { api, IS_DEMO_MODE } from "@/api/client"
 import { Field } from "@/components/admin/admin-ui"
 import { PitchLines } from "@/components/league/icons"
 import { LeagueMark } from "@/components/layout/brand"
+import { useLeagueMeta } from "@/hooks/use-document-meta"
 import { canOpen } from "@/lib/roles"
+import { adminMeta } from "@/lib/seo"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
@@ -26,6 +28,7 @@ export default function LoginPage() {
   const [show, setShow] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: { username: "", password: "" } })
+  useLeagueMeta((league) => adminMeta("Kirish", league))
 
   const onSubmit = form.handleSubmit(async (values) => {
     setError(null)

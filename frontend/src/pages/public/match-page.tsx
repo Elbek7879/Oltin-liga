@@ -16,7 +16,9 @@ import { suspendedFor } from "@/domain/discipline"
 import { formatDate, formatShortDate, formatTime, MATCH_STATUS_LABEL, positionShort } from "@/lib/format"
 import { sideName, stageLabel, totalScore } from "@/lib/match"
 import { cn } from "@/lib/utils"
+import { useLeagueMeta } from "@/hooks/use-document-meta"
 import { getScript } from "@/hooks/use-script"
+import { matchMeta } from "@/lib/seo"
 import { toCyrillic } from "@/lib/translit"
 
 function EventIcon({ type }: { type: MatchEvent["type"] }) {
@@ -196,9 +198,12 @@ export default function MatchPage() {
   const { matchId = "" } = useParams()
   const { index, isLoading, error, refetch } = useSeasonData()
   const [imageOpen, setImageOpen] = useState(false)
+  const match = index?.bundle.matches.find((m) => m.id === matchId)
+  // Serverdagidek: jamoa hali aniqlanmagan bo'lsa (pley-off) — «Pley-off o‘yini»
+  const teamName = (id: Match["homeId"]) => index?.team(id)?.name ?? null
+  useLeagueMeta((league) => (match ? matchMeta(match, teamName(match.homeId), teamName(match.awayId), league) : undefined))
   if (isLoading && !index) return <PageSkeleton />
   if (error || !index) return <ErrorState message={error?.message} onRetry={() => refetch()} className="container-page" />
-  const match = index.bundle.matches.find((m) => m.id === matchId)
   if (!match) {
     return (
       <NotFoundState

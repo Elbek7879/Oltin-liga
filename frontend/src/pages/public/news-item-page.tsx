@@ -3,11 +3,14 @@ import { Link, useParams } from "react-router"
 import { useNewsItem } from "@/api/hooks"
 import { isNotFound } from "@/api/types"
 import { ErrorState, NotFoundState, PageSkeleton } from "@/components/league/states"
+import { useLeagueMeta } from "@/hooks/use-document-meta"
 import { formatDate } from "@/lib/format"
+import { newsMeta } from "@/lib/seo"
 
 export default function NewsItemPage() {
   const { slug = "" } = useParams()
   const { data, isLoading, error, refetch } = useNewsItem(slug)
+  useLeagueMeta((league) => (data ? newsMeta(data, league) : undefined))
   if (isLoading) return <PageSkeleton />
   if (isNotFound(error) || (!error && !data))
     return <NotFoundState icon={Newspaper} title="Yangilik topilmadi" description="Havola eskirgan yoki yangilik o‘chirilgan bo‘lishi mumkin." backTo="/yangiliklar" backLabel="Barcha yangiliklar" />

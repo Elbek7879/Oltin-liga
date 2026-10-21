@@ -10,11 +10,13 @@ import { TeamCrest } from "@/components/league/team-crest"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { activeSuspensions, SUSPENSION_REASON } from "@/domain/discipline"
+import { useLeagueMeta } from "@/hooks/use-document-meta"
 import { useMyTeam } from "@/hooks/use-my-team"
 import { ROUND_LABELS } from "@/domain/playoff"
 import { useSeason } from "@/hooks/use-season"
 import { buildIndex, useSeasonData } from "@/hooks/use-season-data"
 import { POSITION_LABEL } from "@/lib/format"
+import { teamMeta } from "@/lib/seo"
 import { cn } from "@/lib/utils"
 
 function achievementLabel(r: TeamSeasonRecord) {
@@ -53,6 +55,7 @@ export default function TeamPage() {
     if (!profile.data || !index) return undefined
     return buildIndex({ ...index.bundle, teams: [...profile.data.teams, ...index.bundle.teams] })
   }, [profile.data, index])
+  useLeagueMeta((league) => (profile.data ? teamMeta(profile.data.team, league) : undefined))
 
   if (profile.isLoading) return <PageSkeleton />
   if (isNotFound(profile.error))

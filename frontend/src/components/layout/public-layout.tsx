@@ -24,8 +24,10 @@ import { AboutCard } from "@/components/league/about-card"
 import { SocialLinks } from "@/components/league/social-links"
 import { EmptyState } from "@/components/league/states"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { useLeagueMeta } from "@/hooks/use-document-meta"
 import { useSeason } from "@/hooks/use-season"
 import { useLiveUpdates } from "@/hooks/use-live-updates"
+import { staticMeta } from "@/lib/seo"
 import { cn } from "@/lib/utils"
 import { LeagueMark, Logo, ScriptToggle, SeasonSelect, ThemeToggle } from "./brand"
 import { ScrollToTop } from "./scroll-to-top"
@@ -275,6 +277,8 @@ export function PublicLayout() {
   useLiveUpdates({ toasts: true })
   const { seasons, isLoading } = useSeason()
   const location = useLocation()
+  // Doimiy bo'limlar nomi; jamoa, futbolchi, o'yin va yangilik sahifalari nomini o'zi qo'yadi
+  useLeagueMeta((league) => staticMeta(location.pathname, league))
   const seasonPages = !["/yangiliklar", "/homiylar", "/liga-haqida"].some((p) => location.pathname.startsWith(p))
   const noSeasons = !isLoading && seasons.length === 0 && seasonPages
   return (

@@ -4,6 +4,8 @@ import type { ReactNode } from "react"
 import { Link } from "react-router"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useLeagueMeta } from "@/hooks/use-document-meta"
+import { notFoundMeta } from "@/lib/seo"
 import { cn } from "@/lib/utils"
 
 export function SectionHeader({
@@ -65,6 +67,7 @@ export function EmptyState({
 
 /** Yozuv topilmadi (havola eskirgan yoki o'chirilgan): sahifa sarlavhasi va ro'yxatga qaytish havolasi bilan */
 export function NotFoundState({ icon: Icon, title, description, backTo, backLabel }: { icon: LucideIcon; title: string; description: string; backTo: string; backLabel: string }) {
+  useLeagueMeta(notFoundMeta)
   return (
     <div className="container-page flex min-h-[45dvh] flex-col items-center justify-center py-12 text-center">
       <span className="mb-3 flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground">

@@ -6,9 +6,11 @@ import { isNotFound } from "@/api/types"
 import { ErrorState, NotFoundState, PageSkeleton } from "@/components/league/states"
 import { TeamCrest } from "@/components/league/team-crest"
 import type { AwardType } from "@/domain/types"
+import { useLeagueMeta } from "@/hooks/use-document-meta"
 import { useSeasonData } from "@/hooks/use-season-data"
 import { positionLabel } from "@/lib/format"
 import { publishedRoundTeams } from "@/lib/round-team-view"
+import { playerMeta } from "@/lib/seo"
 
 const AWARD_LABEL: Partial<Record<AwardType, string>> = {
   TOP_SCORER: "Mavsumning eng yaxshi to‘purari",
@@ -22,6 +24,7 @@ export default function PlayerPage() {
   const { index } = useSeasonData()
   // Tanlangan mavsumda futbolchi qaysi turlarda ramziy jamoaga kirgan
   const roundTeams = useMemo(() => (index ? publishedRoundTeams(index).filter((t) => t.team.slots.some((s) => s.playerId === playerId)).reverse() : []), [index, playerId])
+  useLeagueMeta((league) => (data ? playerMeta(data.player, league) : undefined))
   if (isLoading) return <PageSkeleton />
   if (isNotFound(error))
     return <NotFoundState icon={UserRound} title="Futbolchi topilmadi" description="Havola eskirgan yoki futbolchi o‘chirilgan bo‘lishi mumkin." backTo="/futbolchilar" backLabel="Barcha futbolchilar" />

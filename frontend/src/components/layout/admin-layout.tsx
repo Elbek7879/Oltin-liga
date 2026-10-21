@@ -28,9 +28,11 @@ import type { AdminRole } from "@/api/types"
 import { EmptyState, PageSkeleton } from "@/components/league/states"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { useLeagueMeta } from "@/hooks/use-document-meta"
 import { SeasonProvider, useSeason } from "@/hooks/use-season"
 import { useLiveUpdates } from "@/hooks/use-live-updates"
 import { canManageCompetition, canOpen, ROLE_LABELS } from "@/lib/roles"
+import { adminMeta } from "@/lib/seo"
 import { cn } from "@/lib/utils"
 import { LeagueMark, ScriptToggle, SeasonSelect, ThemeToggle } from "./brand"
 import { ScrollToTop } from "./scroll-to-top"
@@ -75,6 +77,12 @@ const BOTTOM = [
   { to: "/admin/oyinlar", label: "O‘yinlar", icon: CalendarDays },
   { to: "/admin/jamoalar", label: "Jamoalar", icon: Shield },
 ]
+
+/** Brauzer yorlig'idagi bo'lim nomi: «/admin/natijalar/…» → «Natijalar»; bosh panelda — undefined */
+function sectionLabel(pathname: string) {
+  if (pathname.startsWith("/admin/hisobim")) return "Hisobim"
+  return NAV_GROUPS.flatMap((g) => g.items).find((i) => i.to !== "/admin" && (pathname === i.to || pathname.startsWith(`${i.to}/`)))?.label
+}
 
 /** Rol ochmaydigan bo'limlar menyuda ko'rsatilmaydi */
 function navFor(role: AdminRole) {
@@ -245,6 +253,7 @@ function AdminLayoutInner() {
   const needsSeason = !seasonsLoading && seasons.length === 0 && !WITHOUT_SEASON.some((p) => location.pathname.startsWith(p))
   const [menuOpen, setMenuOpen] = useState(false)
   const logout = useLogout()
+  useLeagueMeta((league) => adminMeta(sectionLabel(location.pathname), league))
 
   if (isLoading) return <PageSkeleton />
   if (!me) return <Navigate to={`/admin/kirish?keyin=${encodeURIComponent(location.pathname)}`} replace />

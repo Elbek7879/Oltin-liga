@@ -1,7 +1,10 @@
 import { Link } from "react-router"
 import { Button } from "@/components/ui/button"
+import { useLeagueMeta } from "@/hooks/use-document-meta"
+import { notFoundMeta } from "@/lib/seo"
 
 export default function NotFoundPage() {
+  useLeagueMeta(notFoundMeta)
   return (
     <div className="container-page flex min-h-[55dvh] flex-col items-center justify-center py-16 text-center">
       <p className="font-score text-5xl text-gold-text">404</p>

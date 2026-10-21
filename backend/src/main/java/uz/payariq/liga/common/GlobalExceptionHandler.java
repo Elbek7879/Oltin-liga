@@ -15,6 +15,7 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
@@ -84,6 +85,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     ResponseEntity<ErrorBody> method() {
         return body(HttpStatus.METHOD_NOT_ALLOWED, "Bu manzil uchun so‘rov turi noto‘g‘ri.");
+    }
+
+    /** Muxlis sahifani yopdi va jonli oqim uzildi — bu xato emas: javob yozilmaydi, jurnalga tushmaydi */
+    @ExceptionHandler(AsyncRequestNotUsableException.class)
+    ResponseEntity<Void> clientGone() {
+        return null;
     }
 
     @ExceptionHandler(Exception.class)

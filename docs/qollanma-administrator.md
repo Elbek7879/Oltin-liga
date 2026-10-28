@@ -4,7 +4,7 @@ Bu qo‘llanma Payariq Oltin Ligasi tashkilotchisi va yordamchilari uchun. Panel
 
 ## 1. Kirish
 
-1. Brauzerda sayt manziliga `/admin` qo‘shib oching (masalan, `https://sizning-domen.uz/admin`).
+1. Brauzerda sayt manziliga `/admin` qo‘shib oching (masalan, `https://oltinliga.uz/admin`).
 2. Login va parolni kiriting, **Kirish** tugmasini bosing.
 3. 5 marta noto‘g‘ri parol kiritilsa, kirish 15 daqiqaga to‘xtatiladi. Bu begona odamlar parol topishga urinishidan himoya qiladi.
 

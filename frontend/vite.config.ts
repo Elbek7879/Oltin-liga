@@ -51,7 +51,7 @@ const preloadHomeRoute: Plugin = {
 
 /**
  * Telegram va boshqa tarmoqlarda havola ulashilganda rasm chiqishi uchun og:image to'liq manzil bo'lishi kerak.
- * Production build: SITE_URL=https://sizning-domen.uz npm run build
+ * Production build: SITE_URL=https://oltinliga.uz npm run build
  */
 const siteUrl = process.env.SITE_URL?.replace(/\/+$/, "")
 const absoluteShareTags: Plugin = {

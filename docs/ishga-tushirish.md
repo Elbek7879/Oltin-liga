@@ -22,7 +22,7 @@ Bitta server yetadi: sayt, API va baza bitta mashinada. Ilova tashqariga to‘g�
 
 Tanlashda tekshiring: Ubuntu VPS berilishi, root/SSH kirish, kunlik snapshot imkoniyati, texnik yordam o‘zbek yoki rus tilida.
 
-**Domen:** `.uz` domenlari cctld.uz saytida ro‘yxatdan o‘tgan akkreditatsiyalangan registratorlar orqali olinadi. Qisqa va eslab qolinadigan nom tanlang, avval bo‘shligini tekshiring. Domen olingach, DNS’da ikkita `A` yozuv qo‘shing: `sizning-domen.uz` va `www.sizning-domen.uz` → server IP manzili.
+**Domen:** liga domeni — `oltinliga.uz` (registrator: sayt.uz / Arsenal D, DNS serverlari `ns8.sayt.uz` va `dns8.sayt.uz`; 2027-yil 21-oktabrgacha to‘langan — muddatidan oldin uzaytiring). Server olingach, registrator panelidagi DNS bo‘limida ikkita `A` yozuv qo‘shing: `oltinliga.uz` va `www.oltinliga.uz` → server IP manzili. Yozuvlar qo‘shilmaguncha domen hech qayerga ochilmaydi (DNS so‘rovlari rad etiladi) — bu yangi domen uchun odatiy holat.
 
 Hosting va domen pullik xizmatlar: xaridni o‘zingiz qilasiz, tanlashda yordam beraman.
 
@@ -33,7 +33,7 @@ PowerShell’da, loyiha papkasida:
 ```powershell
 cd frontend
 npm ci
-$env:SITE_URL = "https://sizning-domen.uz"; npm run build
+$env:SITE_URL = "https://oltinliga.uz"; npm run build
 cd ..\backend
 mvn -Pwith-frontend package
 ```
@@ -69,7 +69,7 @@ sudo cp ~/oltin-liga.service /etc/systemd/system/
 sudo systemctl daemon-reload && sudo systemctl enable --now oltin-liga
 curl -s http://127.0.0.1:8080/actuator/health   # {"status":"UP"} chiqishi kerak
 
-sudo nano ~/Caddyfile       # sizning-domen.uz o'rniga haqiqiy domen
+sudo nano ~/Caddyfile       # oltinliga.uz o'rniga haqiqiy domen
 sudo cp ~/Caddyfile /etc/caddy/Caddyfile && sudo systemctl reload caddy
 
 sudo ufw allow OpenSSH && sudo ufw allow 80,443/tcp && sudo ufw enable
@@ -81,11 +81,11 @@ Birinchi ishga tushishda baza jadvallari avtomatik yaratiladi. Production rejimi
 
 **Jonli yangilanishlar.** Gollar saytda darhol ko‘rinishi uchun `/api/public/live` oqimi ishlatiladi; `deploy/Caddyfile` da u siqishsiz uzatiladigan qilib sozlangan — shu faylni o‘zgartirmasdan ishlating.
 
-**Sayt manzili va xavfsizlik.** `.env` dagi `SITE_URL` (masalan `https://sizning-domen.uz`) albatta to‘ldirilsin: Google uchun canonical havolalar, `sitemap.xml` va `robots.txt` shu manzildan olinadi — so‘rov sarlavhalari orqali begona domenni qo‘yib bo‘lmaydi. `deploy/Caddyfile` dagi `header_up -Forwarded` qatorlarini o‘chirmang: ular login urinishlari chegarasini IP manzilini soxtalashtirib aylanib o‘tishdan himoya qiladi.
+**Sayt manzili va xavfsizlik.** `.env` dagi `SITE_URL` (masalan `https://oltinliga.uz`) albatta to‘ldirilsin: Google uchun canonical havolalar, `sitemap.xml` va `robots.txt` shu manzildan olinadi — so‘rov sarlavhalari orqali begona domenni qo‘yib bo‘lmaydi. `deploy/Caddyfile` dagi `header_up -Forwarded` qatorlarini o‘chirmang: ular login urinishlari chegarasini IP manzilini soxtalashtirib aylanib o‘tishdan himoya qiladi.
 
 ## 5. Birinchi kirish
 
-1. `https://sizning-domen.uz/admin` ni oching va `.env` dagi login bilan kiring.
+1. `https://oltinliga.uz/admin` ni oching va `.env` dagi login bilan kiring.
 2. **Hisobim** sahifasida parolni almashtiring.
 3. Serverda `.env` faylidan `ADMIN_PASSWORD` qatorini o‘chiring: akkaunt allaqachon bazada, bu qator endi kerak emas.
 4. **Sozlamalar → Liga ma’lumotlari** va **Foydalanuvchilar** bo‘limlarini to‘ldiring.
@@ -171,19 +171,19 @@ Baza tuzilmasi o‘zgargan bo‘lsa, ilova uni ishga tushishda o‘zi yangilaydi
 Sayt qidiruv tizimlari uchun tayyor — buni alohida sozlash shart emas:
 
 - Har bir sahifaning o‘z nomi va qisqa tavsifi bor (masalan, «Turnir jadvali — Payariq Oltin Ligasi», jamoa sahifasida jamoa nomi, o‘yin sahifasida «Lochin 2:1 Chinor»). Server sahifani shu nom bilan beradi, shuning uchun Google ham, Telegram’dagi havola kartochkasi ham to‘g‘ri nomni ko‘rsatadi. Liga nomi **Sozlamalar → Liga ma’lumotlari** dan olinadi.
-- `https://sizning-domen.uz/sitemap.xml` — barcha sahifalar ro‘yxati (bo‘limlar, jamoalar, futbolchilar, o‘yinlar, e’lon qilingan yangiliklar). Yangi jamoa yoki yangilik qo‘shilsa, ro‘yxatga o‘zi kiradi.
-- `https://sizning-domen.uz/robots.txt` — admin panel va API qidiruvga yopiq. Admin panel, kirish sahifasi va mavjud bo‘lmagan sahifalar Google’da ko‘rsatilmaydi; mavjud bo‘lmagan manzil 404 qaytaradi.
+- `https://oltinliga.uz/sitemap.xml` — barcha sahifalar ro‘yxati (bo‘limlar, jamoalar, futbolchilar, o‘yinlar, e’lon qilingan yangiliklar). Yangi jamoa yoki yangilik qo‘shilsa, ro‘yxatga o‘zi kiradi.
+- `https://oltinliga.uz/robots.txt` — admin panel va API qidiruvga yopiq. Admin panel, kirish sahifasi va mavjud bo‘lmagan sahifalar Google’da ko‘rsatilmaydi; mavjud bo‘lmagan manzil 404 qaytaradi.
 - Sinov mavsumi, qoralama yangiliklar va bekor qilingan o‘yinlar ro‘yxatga kirmaydi.
-- `www.sizning-domen.uz` asosiy manzilga yo‘naltiriladi (`deploy/Caddyfile`), Google saytni bitta manzilda ko‘radi.
+- `www.oltinliga.uz` asosiy manzilga yo‘naltiriladi (`deploy/Caddyfile`), Google saytni bitta manzilda ko‘radi.
 
 **Saytni Google’ga tanitish** (sayt HTTPS bilan ochilgandan keyin, bir marta):
 
-1. [Google Search Console](https://search.google.com/search-console) ga Google akkaunti bilan kiring → **Mulk qo‘shish** → **Domen** → `sizning-domen.uz`.
+1. [Google Search Console](https://search.google.com/search-console) ga Google akkaunti bilan kiring → **Mulk qo‘shish** → **Domen** → `oltinliga.uz`.
 2. Google bergan `google-site-verification=…` yozuvini nusxalang.
 3. Domen sotib olingan saytda (masalan, sayt.uz) domen boshqaruvi → **DNS** → yangi **TXT** yozuv: nomi `@`, qiymati — nusxalangan matn. Saqlang.
 4. Search Console’da **Tasdiqlash** ni bosing (DNS yangilanishi bir necha daqiqadan bir necha soatgacha olishi mumkin).
 5. **Sitemaps** bo‘limida `sitemap.xml` ni yozib, **Yuborish** ni bosing.
 
-**Yandex** uchun ham xuddi shunday: [Yandex Webmaster](https://webmaster.yandex.ru) → sayt qo‘shish → DNS orqali tasdiqlash → **Indekslash → Sitemap fayllari** ga `https://sizning-domen.uz/sitemap.xml`.
+**Yandex** uchun ham xuddi shunday: [Yandex Webmaster](https://webmaster.yandex.ru) → sayt qo‘shish → DNS orqali tasdiqlash → **Indekslash → Sitemap fayllari** ga `https://oltinliga.uz/sitemap.xml`.
 
 Yangi sayt qidiruvda odatda bir necha kundan 2–3 haftagacha paydo bo‘ladi. Avval liga nomi bo‘yicha qidirganda chiqadi; Search Console’dagi **Sahifalar** hisobotida qaysi sahifalar qo‘shilganini ko‘rish mumkin. Tezlashtirish uchun sayt havolasini Telegram kanali va Instagram profiliga qo‘ying.

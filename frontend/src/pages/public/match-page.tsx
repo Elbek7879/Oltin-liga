@@ -1,7 +1,9 @@
 import { ArrowLeft, ImageDown, ListX, Share2 } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Link, useParams } from "react-router"
+import { useQuery } from "@tanstack/react-query"
 import { toast } from "sonner"
+import { api } from "@/api/client"
 import { useHeadToHead } from "@/api/hooks"
 import { FeaturedMatch } from "@/components/league/featured-match"
 import { MatchImageDialog, matchImageTitle } from "@/components/league/match-image-dialog"
@@ -12,8 +14,9 @@ import { TeamCrest } from "@/components/league/team-crest"
 import { Button } from "@/components/ui/button"
 import type { Match, MatchEvent } from "@/domain/types"
 import { useSeasonData, type SeasonIndex } from "@/hooks/use-season-data"
+import { useSeason } from "@/hooks/use-season"
 import { suspendedFor } from "@/domain/discipline"
-import { formatDate, formatShortDate, formatTime, MATCH_STATUS_LABEL, positionShort } from "@/lib/format"
+import { formatDate, formatShortDate, formatTime, localDateKey, MATCH_STATUS_LABEL, positionShort } from "@/lib/format"
 import { sideName, stageLabel, totalScore } from "@/lib/match"
 import { cn } from "@/lib/utils"
 import { useLeagueMeta } from "@/hooks/use-document-meta"
@@ -160,7 +163,7 @@ function HeadToHeadPanel({ match, index }: { match: Match; index: SeasonIndex })
               const t = totalScore(m)
               return (
                 <li key={m.id} className="flex items-center gap-2 px-4 py-2">
-                  <span className="w-[4.5rem] shrink-0 text-xs text-muted-foreground">{formatShortDate(m.kickoff)} {m.kickoff.slice(0, 4)}</span>
+                  <span className="w-[4.5rem] shrink-0 text-xs text-muted-foreground">{formatShortDate(m.kickoff)} {localDateKey(m.kickoff).slice(0, 4)}</span>
                   <span className="min-w-0 flex-1 truncate text-right">{teamOf(m.homeId)?.name}</span>
                   <span className="shrink-0 rounded bg-muted px-1.5 font-score">
                     {t?.home}:{t?.away}
@@ -202,14 +205,32 @@ export default function MatchPage() {
   // Serverdagidek: jamoa hali aniqlanmagan bo'lsa (pley-off) — «Pley-off o‘yini»
   const teamName = (id: Match["homeId"]) => index?.team(id)?.name ?? null
   useLeagueMeta((league) => (match ? matchMeta(match, teamName(match.homeId), teamName(match.awayId), league) : undefined))
+
+  // O'yin tanlangan mavsumda bo'lmasa (masalan, Telegram'dagi o'tgan mavsum havolasi), u qaysi mavsumniki ekani
+  // aniqlanadi va shu mavsumga o'tiladi. Tanlov brauzerda saqlanmaydi — muxlisning odatdagi mavsumi o'zgarmaydi.
+  const { setSeasonId } = useSeason()
+  const owner = useQuery({
+    queryKey: ["match-season", matchId],
+    queryFn: () => api.getMatchSeason(matchId),
+    enabled: Boolean(index) && !match && Boolean(matchId),
+    retry: false,
+    staleTime: Infinity,
+  })
+  const ownerSeasonId = owner.data?.seasonId
+  const shownSeasonId = index?.bundle.season.id
+  useEffect(() => {
+    if (ownerSeasonId && shownSeasonId && ownerSeasonId !== shownSeasonId) setSeasonId(ownerSeasonId, { persist: false })
+  }, [ownerSeasonId, shownSeasonId, setSeasonId])
+
   if (isLoading && !index) return <PageSkeleton />
   if (error || !index) return <ErrorState message={error?.message} onRetry={() => refetch()} className="container-page" />
+  if (!match && (owner.isPending || (ownerSeasonId && ownerSeasonId !== shownSeasonId))) return <PageSkeleton />
   if (!match) {
     return (
       <NotFoundState
         icon={ListX}
         title="O‘yin topilmadi"
-        description="Bu o‘yin tanlangan mavsumga tegishli emas yoki o‘chirilgan. Yuqoridan boshqa mavsumni tanlab ko‘ring."
+        description="Havola eskirgan yoki o‘yin o‘chirilgan bo‘lishi mumkin. O‘yinlar ro‘yxatidan kerakli o‘yinni toping."
         backTo="/oyinlar"
         backLabel="O‘yinlar ro‘yxati"
       />

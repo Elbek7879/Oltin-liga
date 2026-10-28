@@ -67,7 +67,8 @@ export default function PlayerPage() {
               </span>
             )}
             <div className="min-w-0">
-              <h1 className="truncate font-display text-3xl md:text-5xl">
+              {/* Uzun ism qirqilmaydi — keyingi qatorga o'tadi (to'liq ism faqat shu sarlavhada ko'rinadi) */}
+              <h1 className="font-display text-3xl [overflow-wrap:anywhere] md:text-5xl">
                 {player.firstName} {player.lastName}
               </h1>
               <p className="mt-1 flex flex-wrap items-center gap-x-3 text-sm text-band-muted md:text-base">

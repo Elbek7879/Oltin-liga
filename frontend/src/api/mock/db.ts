@@ -1,5 +1,5 @@
 import type { Appearance, AuditEntry, Group, ID, LeagueSettings, Match, MatchEvent, News, Player, PointAdjustment, RosterEntry, RoundTeam, Season, SeasonAward, SeasonTeam, Sponsor, Team, Venue } from "@/domain/types"
-import type { UserAccount } from "../types"
+import type { FeedbackMessage, TeamApplication, UserAccount } from "../types"
 
 /** Namunaviy rejimdagi butun ma'lumotlar bazasi (3-bosqichda PostgreSQL bilan almashtiriladi) */
 export interface LeagueDb {
@@ -26,6 +26,9 @@ export interface LeagueDb {
   roundTeams?: (RoundTeam & { seasonId: ID })[]
   /** Namunaviy akkauntlar (parollar saqlanmaydi) */
   users?: UserAccount[]
+  /** Saytdan kelgan jamoa arizalari hamda taklif va shikoyatlar */
+  applications?: TeamApplication[]
+  feedback?: FeedbackMessage[]
 }
 
 export const DB_VERSION = 2

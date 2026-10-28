@@ -4,6 +4,8 @@
 @import "@fontsource-variable/archivo/standard.css";
 
 @custom-variant dark (&:is(.dark *));
+/* Kirill yozuvi tanlanganda (html lang="uz-Cyrl"): kirill matni kengroq, joy tor bo'lsa ixchamlashtiriladi */
+@custom-variant cyrl (&:lang(uz-Cyrl));
 
 /*
  * Oltin Maydon dizayn tizimi.

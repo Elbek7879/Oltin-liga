@@ -11,6 +11,8 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import { initScript } from "@/hooks/use-script"
 import { SeasonProvider } from "@/hooks/use-season"
 import { ThemeProvider } from "@/hooks/use-theme"
+import { reloadOnceForNewVersion } from "@/lib/chunk-reload"
+import { setSessionExpired } from "@/lib/session-expired"
 import "./styles/globals.css"
 
 const queryClient = new QueryClient({
@@ -20,8 +22,17 @@ const queryClient = new QueryClient({
   },
 })
 
-// Sessiya tugasa, admin paneli foydalanuvchini kirish sahifasiga qaytaradi
-onUnauthorized(() => queryClient.setQueryData(["me"], null))
+// Sessiya tugasa: ishlayotgan admin sahifadan chiqarib yuborilmaydi — ustida «Qayta kiring» oynasi ochiladi,
+// kiritilgan natija yoki matn yo'qolmaydi. Kirmagan foydalanuvchi esa kirish sahifasiga qaytariladi.
+onUnauthorized(() => {
+  if (queryClient.getQueryData(["me"])) setSessionExpired(true)
+  else queryClient.setQueryData(["me"], null)
+})
+
+// Yangi versiya chiqqach oldindan yuklanadigan eski bo'lak topilmasa — sahifa bir marta o'zi yangilanadi
+window.addEventListener("vite:preloadError", (event) => {
+  if (reloadOnceForNewVersion()) event.preventDefault()
+})
 
 // Bosh sahifada eng katta element — yangiliklar: ular sahifa kodi bilan parallel so'raladi
 if (window.location.pathname === "/") void queryClient.prefetchQuery(newsQuery())

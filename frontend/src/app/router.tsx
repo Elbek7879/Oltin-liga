@@ -1,5 +1,6 @@
 import { createBrowserRouter, type RouteObject } from "react-router"
 import { PublicLayout } from "@/components/layout/public-layout"
+import { importFresh } from "@/lib/chunk-reload"
 import { RouteError } from "./route-error"
 
 /** Sahifa kodi yuklanguncha ko'rsatiladigan oddiy ekran */
@@ -12,8 +13,9 @@ function AppLoading() {
 }
 
 type PageModule = { default: React.ComponentType }
+// Yangi versiya chiqqach eski bo'lak topilmasa, sahifa bir marta o'zi yangilanadi (lib/chunk-reload.ts)
 const page = (load: () => Promise<PageModule>): Pick<RouteObject, "lazy"> => ({
-  lazy: async () => ({ Component: (await load()).default }),
+  lazy: async () => ({ Component: (await importFresh(load)).default }),
 })
 
 export const router = createBrowserRouter([
@@ -41,6 +43,7 @@ export const router = createBrowserRouter([
       { path: "liga-haqida", ...page(() => import("@/pages/public/about-page")) },
       { path: "nizom", ...page(() => import("@/pages/public/rules-page")) },
       { path: "maxfiylik", ...page(() => import("@/pages/public/privacy-page")) },
+      { path: "murojaat", ...page(() => import("@/pages/public/appeal-page")) },
       { path: "*", ...page(() => import("@/pages/public/not-found-page")) },
     ],
   },
@@ -54,9 +57,10 @@ export const router = createBrowserRouter([
     path: "admin",
     errorElement: <RouteError />,
     HydrateFallback: AppLoading,
-    lazy: async () => ({ Component: (await import("@/components/layout/admin-layout")).AdminLayout }),
+    lazy: async () => ({ Component: (await importFresh(() => import("@/components/layout/admin-layout"))).AdminLayout }),
     children: [
       { index: true, ...page(() => import("@/pages/admin/dashboard-page")) },
+      { path: "arizalar", ...page(() => import("@/pages/admin/applications-page")) },
       { path: "mavsumlar", ...page(() => import("@/pages/admin/seasons-page")) },
       { path: "jamoalar", ...page(() => import("@/pages/admin/teams-page")) },
       { path: "futbolchilar", ...page(() => import("@/pages/admin/players-page")) },

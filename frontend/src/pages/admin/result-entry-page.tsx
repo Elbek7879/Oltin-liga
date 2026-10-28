@@ -1,8 +1,8 @@
-import { ArrowLeft, Ban, CalendarClock, CircleCheck, ImageDown, Plus, Printer, Save, TriangleAlert, X } from "lucide-react"
+import { ArrowLeft, Ban, CalendarClock, CircleCheck, ImageDown, Plus, Printer, RefreshCw, Save, TriangleAlert, X } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router"
 import { api } from "@/api/client"
-import { useAdminMutation } from "@/api/hooks"
+import { useAdminMutation, useMe } from "@/api/hooks"
 import { ReadOnlyBanner, runAction, StickyActions, useReadOnly } from "@/components/admin/admin-ui"
 import { QuickEventDialog, type QuickCardKind, type QuickGoalKind } from "@/components/admin/quick-event-dialog"
 import { ScoreStepper } from "@/components/admin/score-stepper"
@@ -22,6 +22,7 @@ import { validateResult, type ResultEventInput, type ResultInput } from "@/domai
 import { useSeasonData, type SeasonIndex } from "@/hooks/use-season-data"
 import { formatDate, formatTime, MATCH_STATUS_LABEL } from "@/lib/format"
 import { stageLabel } from "@/lib/match"
+import { canOpen } from "@/lib/roles"
 import { cn } from "@/lib/utils"
 
 type Side = "home" | "away"
@@ -95,7 +96,8 @@ function initialState(match: Match, index: SeasonIndex): EntryState {
     liveMinute: match.liveMinute ? String(match.liveMinute) : "",
     forfeitLoser: forfeit ? (match.winnerId === match.homeId ? "away" : "home") : null,
     goals: forfeit ? [] : goals,
-    cards: forfeit ? [] : cards,
+    // Texnik natijada ham kartochkalar saqlanadi (diskvalifikatsiya va Fair Play)
+    cards,
     appearances: new Set(apps),
   }
 }
@@ -148,8 +150,11 @@ export default function ResultEntryPage() {
   const readOnly = useReadOnly()
   const match = index?.bundle.matches.find((m) => m.id === matchId)
   const save = useAdminMutation((input: ResultInput) => api.saveResult(matchId, input))
+  const { data: me } = useMe()
 
   const [state, setState] = useState<EntryState | null>(null)
+  // Forma qaysi o'yin va qaysi versiyadan to'ldirilgani: boshqa joyda o'zgarsa, eski ma'lumot ustidan yozilmaydi
+  const [base, setBase] = useState<{ matchId: ID; version: number | null } | null>(null)
   const [appsTouched, setAppsTouched] = useState(false)
   const [showApps, setShowApps] = useState(false)
   const [attempted, setAttempted] = useState(false)
@@ -157,8 +162,13 @@ export default function ResultEntryPage() {
   const [imageOpen, setImageOpen] = useState(false)
 
   useEffect(() => {
-    if (match && index && !state) setState(initialState(match, index))
-  }, [match, index, state])
+    if (match && index && (!state || base?.matchId !== match.id)) {
+      setState(initialState(match, index))
+      setBase({ matchId: match.id, version: match.version ?? null })
+      setAppsTouched(false)
+      setAttempted(false)
+    }
+  }, [match, index, state, base])
 
   const rosterIds = useMemo(() => {
     const map = new Map<Side, ID[]>()
@@ -199,15 +209,27 @@ export default function ResultEntryPage() {
     )
   }
   if (match.timeConfirmed === false && match.status !== "FINISHED" && match.status !== "LIVE") {
+    const schedulePath = match.stage === "PLAYOFF" ? "/admin/pley-off" : "/admin/oyinlar"
+    const canSchedule = me ? canOpen(me.role, schedulePath) : false
     return (
       <EmptyState
         icon={CalendarClock}
         title="Avval o‘yin sanasini belgilang"
-        description="Bu o‘yinning sanasi va vaqti hali belgilanmagan. Sana qo‘yilgach, natijani shu yerda kiritasiz."
+        description={
+          canSchedule
+            ? "Bu o‘yinning sanasi va vaqti hali belgilanmagan. Sana qo‘yilgach, natijani shu yerda kiritasiz."
+            : "Bu o‘yinning sanasi va vaqti hali belgilanmagan. Sanani tashkilotchi belgilaydi — shundan keyin natijani shu yerda kiritasiz."
+        }
         action={
-          <Button asChild>
-            <Link to={match.stage === "PLAYOFF" ? "/admin/pley-off" : "/admin/oyinlar"}>Sanani belgilash</Link>
-          </Button>
+          canSchedule ? (
+            <Button asChild>
+              <Link to={schedulePath}>Sanani belgilash</Link>
+            </Button>
+          ) : (
+            <Button asChild variant="outline">
+              <Link to="/admin/natijalar">Natijalar ro‘yxati</Link>
+            </Button>
+          )
         }
       />
     )
@@ -249,13 +271,16 @@ export default function ResultEntryPage() {
 
   const toInput = (): ResultInput => {
     const events: ResultEventInput[] = []
-    if (playable && !forfeit) {
-      for (const g of state.goals) {
-        const minute = g.minute ? Number(g.minute) : null
-        if (g.kind === "OWN_GOAL") {
-          events.push({ type: "OWN_GOAL", seasonTeamId: teamId(other(g.side)), playerId: g.playerId, minute })
-        } else {
-          events.push({ type: g.kind as EventType, seasonTeamId: teamId(g.side), playerId: g.playerId, assistId: g.assistId, minute })
+    if (playable) {
+      // Texnik natijada gollar yozilmaydi, kartochkalar esa saqlanadi
+      if (!forfeit) {
+        for (const g of state.goals) {
+          const minute = g.minute ? Number(g.minute) : null
+          if (g.kind === "OWN_GOAL") {
+            events.push({ type: "OWN_GOAL", seasonTeamId: teamId(other(g.side)), playerId: g.playerId, minute })
+          } else {
+            events.push({ type: g.kind as EventType, seasonTeamId: teamId(g.side), playerId: g.playerId, assistId: g.assistId, minute })
+          }
         }
       }
       for (const c of state.cards) {
@@ -279,18 +304,29 @@ export default function ResultEntryPage() {
             seasonTeamId: rosterIds.get("home")!.includes(playerId) ? teamId("home") : teamId("away"),
           }))
         : undefined,
+      version: base?.version ?? null,
     }
   }
 
   const input = toInput()
   const rosterSet = (st: ID) => new Set(index.bundle.rosters.filter((r) => r.seasonTeamId === st).map((r) => r.playerId))
   const check = validateResult(match, input, rosterSet, (st) => index.team(st)?.name ?? "")
+  // Forma ochilgandan keyin natija boshqa joyda (Telegram bot, boshqa admin) o'zgargan
+  const changedElsewhere = base?.version != null && match.version != null && match.version !== base.version
+  const reloadFromServer = () => {
+    setState(initialState(match, index))
+    setBase({ matchId: match.id, version: match.version ?? null })
+    setAppsTouched(false)
+    setAttempted(false)
+  }
 
   const onSave = async () => {
     setAttempted(true)
     if (check.errors.length > 0) return
     const ok = await runAction(() => save.mutateAsync(input), state.status === "FINISHED" ? "Natija saqlandi. Jadval va statistika yangilandi." : "O‘yin holati saqlandi")
     if (ok) navigate("/admin/natijalar", { state: state.status === "FINISHED" ? { saved: match.id } : null })
+    // Saqlanmadi (masalan, boshqa joyda o'zgargan) — eng so'nggi ma'lumot olinadi, yuqorida ogohlantirish chiqadi
+    else void refetch()
   }
 
   const goalRows = (side: Side) => state.goals.filter((g) => g.side === side)
@@ -342,6 +378,18 @@ export default function ResultEntryPage() {
       </div>
 
       <fieldset disabled={readOnly} className="mt-4 space-y-5">
+        {changedElsewhere && (
+          <div role="alert" className="flex flex-col gap-3 rounded-xl border border-gold/50 bg-gold-soft p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+            <p>
+              <span className="font-semibold">Bu o‘yin natijasi boshqa joyda o‘zgartirildi</span> (masalan, Telegram bot orqali). Eski ma’lumot ustidan yozilmasligi
+              uchun yangisini yuklang va o‘zgarishlaringizni qaytadan kiriting.
+            </p>
+            <Button type="button" variant="outline" onClick={reloadFromServer} className="shrink-0">
+              <RefreshCw aria-hidden="true" />
+              Yangisini yuklash
+            </Button>
+          </div>
+        )}
         {banned.length > 0 && (
           <div role="alert" className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 text-sm">
             <p className="flex items-center gap-2 font-semibold text-destructive">
@@ -438,7 +486,7 @@ export default function ResultEntryPage() {
                   </SelectContent>
                 </Select>
                 <p className="text-sm text-muted-foreground">
-                  Natija {state.forfeitLoser === "home" ? `0:3 (${team("away").name} g‘alabasi)` : `3:0 (${team("home").name} g‘alabasi)`} deb yoziladi. Gollar futbolchilar statistikasiga kirmaydi.
+                  Natija {state.forfeitLoser === "home" ? `0:3 (${team("away").name} g‘alabasi)` : `3:0 (${team("home").name} g‘alabasi)`} deb yoziladi. Gollar futbolchilar statistikasiga kirmaydi, berilgan kartochkalar esa quyida saqlanadi.
                 </p>
               </div>
             ) : (
@@ -456,11 +504,11 @@ export default function ResultEntryPage() {
                         onChange={(v) => setGoals(side, "Score", v)}
                       />
                       <div className="flex w-full flex-col gap-1.5 px-1 sm:flex-row sm:justify-center">
-                        <Button type="button" size="sm" onClick={() => setQuick({ side, mode: "goal" })} aria-label={`${team(side).name}: gol qo‘shish`}>
+                        <Button type="button" size="sm" onClick={() => setQuick({ side, mode: "goal" })} aria-label={`${team(side).name}: gol qo‘shish`} className="min-h-11 sm:min-h-0">
                           <BallIcon />
                           Gol
                         </Button>
-                        <Button type="button" size="sm" variant="outline" onClick={() => setQuick({ side, mode: "card" })} aria-label={`${team(side).name}: kartochka berish`}>
+                        <Button type="button" size="sm" variant="outline" onClick={() => setQuick({ side, mode: "card" })} aria-label={`${team(side).name}: kartochka berish`} className="min-h-11 sm:min-h-0">
                           <CardIcon kind="yellow" />
                           Kartochka
                         </Button>
@@ -543,7 +591,7 @@ export default function ResultEntryPage() {
                                 placeholder="Daqiqa"
                                 value={g.minute}
                                 onChange={(e) => patch({ minute: e.target.value.replace(/\D/g, "").slice(0, 3) })}
-                                className="ml-auto h-9! w-24"
+                                className="ml-auto h-11! w-24 sm:h-9!"
                               />
                             </div>
                             <div className="grid gap-2 sm:grid-cols-[8.5rem_1fr]">
@@ -592,7 +640,7 @@ export default function ResultEntryPage() {
           </section>
         )}
 
-        {playable && !forfeit && (
+        {playable && (
           <section className="panel p-4" aria-labelledby="cards-title">
             <div className="mb-3 flex items-center justify-between gap-2">
               <h2 id="cards-title" className="font-display text-lg">
@@ -605,6 +653,7 @@ export default function ResultEntryPage() {
                     type="button"
                     variant="outline"
                     size="sm"
+                    className="min-h-11 sm:min-h-0"
                     onClick={() => setState((s) => (s ? { ...s, cards: [...s.cards, { key: nextKey(), side, kind: "YELLOW", playerId: null, minute: "" }] } : s))}
                   >
                     <Plus aria-hidden="true" />

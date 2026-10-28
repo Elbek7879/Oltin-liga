@@ -94,7 +94,7 @@ export default function TeamPage() {
           <div className="flex items-center gap-4 md:gap-6">
             <TeamCrest team={team} size="xl" />
             <div className="min-w-0">
-              <h1 className="truncate font-display text-3xl md:text-5xl">{team.name}</h1>
+              <h1 className="font-display text-3xl [overflow-wrap:anywhere] md:text-5xl">{team.name}</h1>
               <p className="mt-1 text-sm text-band-muted md:text-base">
                 {team.village} qishlog‘i{team.founded ? `, ${team.founded}-yildan beri` : ""}
               </p>

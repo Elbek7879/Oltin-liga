@@ -47,6 +47,9 @@ if (-not $pgDump) {
 if (-not $pgDump) { throw "pg_dump topilmadi. PostgreSQL bin papkasini PATH ga qo'shing." }
 
 New-Item -ItemType Directory -Force $Target | Out-Null
+# Zaxirada parol xeshlari va futbolchilar telefonlari bor: papka faqat joriy foydalanuvchi va tizimga ochiq
+& icacls $Target /inheritance:r /grant:r "$($env:USERDOMAIN)\$($env:USERNAME):(OI)(CI)F" "*S-1-5-18:(OI)(CI)F" | Out-Null
+if ($LASTEXITCODE -ne 0) { Write-Warning "Zaxira papkasi huquqlarini cheklab bo'lmadi (icacls kod $LASTEXITCODE)" }
 $stamp = Get-Date -Format "yyyy-MM-dd_HHmm"
 $dumpFile = Join-Path $Target "payariq-$stamp.dump"
 

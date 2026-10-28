@@ -13,8 +13,15 @@ const SINGLE: Record<string, string> = {
   n: "н", o: "о", p: "п", q: "қ", r: "р", s: "с", t: "т", u: "у", v: "в", w: "в", x: "х", y: "й", z: "з",
 }
 
-/** Imlo qoidasidan tashqari so'zlar (so'z boshi): «Payariq» — «Пайариқ», «Паяриқ» emas */
-const EXCEPTIONS: [string, string][] = [["payariq", "пайариқ"]]
+/**
+ * Imlo qoidasidan tashqari so'zlar (so'z boshi): «Payariq» — «Пайариқ», «Паяриқ» emas;
+ * oy nomlari kirillchada rus tilidagidek yoziladi: «oktabr» — «октябр», «sentabr» — «сентябр»
+ */
+const EXCEPTIONS: [string, string][] = [
+  ["payariq", "пайариқ"],
+  ["sentabr", "сентябр"],
+  ["oktabr", "октябр"],
+]
 
 /** O'girilmaydigan bo'laklar: havola, e-pochta, domen va fayl turlari kabi lotincha qisqartmalar */
 const KEEP = /(https?:\/\/\S+|www\.\S+|@[A-Za-z0-9_]{3,}|[\w.+-]+@[\w-]+\.[\w.-]+|\b[\w-]+\.(?:uz|com|ru|org|net|me)\b|\b(?:PNG|JPG|JPEG|WebP|PDF|QR|SMS|URL|FIFA|UEFA|PWA|YouTube|API|TAS-IX|CSV|Excel|Wi-Fi)\b)/g
@@ -61,6 +68,12 @@ function wordToCyrillic(word: string): string {
     }
     if (lc === "c" && nl === "h") {
       out += upper("ч", ch)
+      i += 2
+      continue
+    }
+    // Ruscha o'zlashma so'zlar: «pozitsiya» — «позиция», «operatsion» — «операцион» («ketsa» kabi so'zlar o'zgarmaydi)
+    if (lc === "t" && nl === "s" && word[i + 2]?.toLowerCase() === "i" && /[yo]/i.test(word[i + 3] ?? "")) {
+      out += upper("ц", ch)
       i += 2
       continue
     }

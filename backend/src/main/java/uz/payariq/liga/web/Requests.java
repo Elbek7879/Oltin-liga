@@ -13,6 +13,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import uz.payariq.liga.domain.FeedbackKind;
 import uz.payariq.liga.domain.MatchStage;
 import uz.payariq.liga.domain.MatchStatus;
 import uz.payariq.liga.domain.NewsStatus;
@@ -219,5 +220,19 @@ public final class Requests {
     public record PlayersBulk(
             @NotNull(message = "Jamoani tanlang") UUID seasonTeamId,
             @NotEmpty(message = "Kamida bitta futbolchi kiriting") @Size(max = 60, message = "Bir martada ko‘pi bilan 60 ta futbolchi") List<@Valid PlayerRow> players) {
+    }
+
+    /**
+     * Saytdan yuborilgan yangi mavsumga qo'shilish arizasi (logotip alohida fayl bo'lib keladi).
+     * Qatorlar xizmat qatlamida qator raqami bilan tekshiriladi. website — botlar uchun tuzoq: odam uni ko'rmaydi.
+     */
+    public record TeamApplicationInput(String teamName, String village, String contactPhone, List<ApplicationPlayerInput> players, String website) {
+    }
+
+    public record ApplicationPlayerInput(String firstName, String lastName, Integer birthYear, Position position) {
+    }
+
+    /** Taklif, shikoyat yoki murojaat; ism va telefon ixtiyoriy. website — botlar uchun tuzoq */
+    public record FeedbackInput(FeedbackKind kind, String body, String authorName, String phone, String website) {
     }
 }

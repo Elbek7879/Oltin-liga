@@ -8,6 +8,8 @@
 # Har kuni 03:00 da (crontab -e):
 #   0 3 * * * /opt/oltin-liga/backup.sh >> /opt/oltin-liga/logs/backup.log 2>&1
 set -euo pipefail
+# Zaxirada parol xeshlari va futbolchilar telefonlari bor: fayllar faqat egasiga ochiq bo'lsin
+umask 077
 
 ENV_FILE="${ENV_FILE:-/opt/oltin-liga/.env}"
 TARGET="${TARGET:-/opt/oltin-liga/backups}"
@@ -29,16 +31,19 @@ else
 fi
 
 mkdir -p "$TARGET"
+chmod 700 "$TARGET"
 STAMP="$(date +%Y-%m-%d_%H%M)"
 DUMP="$TARGET/payariq-$STAMP.dump"
 
 # Parol faqat shu buyruq uchun beriladi, ekranga chiqmaydi
 PGPASSWORD="$(get DB_PASSWORD)" pg_dump --host "$DB_HOST" --port "$DB_PORT" --username "$DB_USERNAME" \
   --format=custom --no-owner --file "$DUMP" "$DB_NAME"
+chmod 600 "$DUMP"
 echo "$(date '+%F %T') baza saqlandi: $DUMP ($(du -h "$DUMP" | cut -f1))"
 
 if [[ -n "$MEDIA_DIR" && -d "$MEDIA_DIR" ]] && [[ -n "$(ls -A "$MEDIA_DIR")" ]]; then
   tar -czf "$TARGET/payariq-media-$STAMP.tar.gz" -C "$MEDIA_DIR" .
+  chmod 600 "$TARGET/payariq-media-$STAMP.tar.gz"
   echo "$(date '+%F %T') rasmlar saqlandi: payariq-media-$STAMP.tar.gz"
 fi
 

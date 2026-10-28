@@ -2,6 +2,7 @@ package uz.payariq.liga;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.head;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -73,6 +74,37 @@ class SecurityIntegrationTest extends IntegrationTestBase {
         }
         mvc.perform(post("/api/auth/login").with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isTooManyRequests());
+    }
+
+    @Test
+    @DisplayName("IP manzilini almashtirib parol taxmin qilish ham bloklanadi (bitta login uchun 10 ta xato)")
+    void bruteForceFromManyAddresses() throws Exception {
+        String body = json.writeValueAsString(Map.of("username", "tarqoq-hujum", "password", "xato"));
+        for (int i = 0; i < 10; i++) {
+            String ip = "198.51.100." + i;
+            mvc.perform(post("/api/auth/login").with(csrf()).with(r -> { r.setRemoteAddr(ip); return r; })
+                    .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isUnauthorized());
+        }
+        mvc.perform(post("/api/auth/login").with(csrf()).with(r -> { r.setRemoteAddr("203.0.113.77"); return r; })
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isTooManyRequests());
+    }
+
+    @Test
+    @DisplayName("HEAD so'rovlari (monitoring xizmatlari) GET kabi ochiq")
+    void headRequests() throws Exception {
+        mvc.perform(head("/api/public/seasons")).andExpect(status().isOk());
+        mvc.perform(head("/")).andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("noto'g'ri so'rov 500 emas, tushunarli 400/415 qaytaradi")
+    void clientErrors() throws Exception {
+        mvc.perform(get("/api/public/head-to-head").param("teamA", "00000000-0000-0000-0000-000000000000"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("So‘rovda kerakli ma’lumot yetishmayapti."));
+        mvc.perform(post("/api/auth/login").with(csrf()).contentType(MediaType.TEXT_PLAIN).content("x"))
+                .andExpect(status().isUnsupportedMediaType());
     }
 
     @Test

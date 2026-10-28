@@ -21,6 +21,8 @@ export interface ResultInput {
   liveMinute?: number | null
   events: ResultEventInput[]
   appearances?: { seasonTeamId: ID; playerId: ID }[]
+  /** Forma ochilgandagi o'yin versiyasi: server boshqa joyda o'zgargan natijani ustidan yozmaydi (409) */
+  version?: number | null
 }
 
 export interface ValidationResult {
@@ -51,6 +53,56 @@ function validScore(v: number | null | undefined) {
   return v != null && Number.isInteger(v) && v >= 0 && v <= 50
 }
 
+/** Har bir hodisani tekshiradi (jamoa, tarkib, daqiqa, kartochkalar soni); muallifi ko'rsatilmagan gollar sonini qaytaradi */
+function checkEvents(
+  events: ResultEventInput[],
+  homeId: ID,
+  awayId: ID,
+  rosterOf: (seasonTeamId: ID) => Set<ID>,
+  teamName: (seasonTeamId: ID) => string,
+  errors: string[],
+) {
+  const redCount = new Map<ID, number>()
+  const yellowCount = new Map<ID, number>()
+  let unknownScorers = 0
+
+  for (const e of events) {
+    if (e.seasonTeamId !== homeId && e.seasonTeamId !== awayId) {
+      errors.push("Hodisa ushbu o‘yinda qatnashmayotgan jamoaga biriktirilgan.")
+      continue
+    }
+    const roster = rosterOf(e.seasonTeamId)
+    if (e.playerId && !roster.has(e.playerId)) {
+      errors.push(`Tanlangan futbolchi ${teamName(e.seasonTeamId)} tarkibida yo‘q.`)
+    }
+    if (!e.playerId) {
+      if (isGoal(e.type) || e.type === "OWN_GOAL") unknownScorers++
+      else errors.push("Kartochka uchun futbolchini tanlang.")
+    }
+    if (e.assistId) {
+      if (!roster.has(e.assistId)) errors.push("Assist bergan futbolchi gol urgan jamoa tarkibida bo‘lishi kerak.")
+      if (e.assistId === e.playerId) errors.push("Futbolchi o‘z goliga assist bera olmaydi.")
+    }
+    if (e.minute != null && (!Number.isInteger(e.minute) || e.minute < 1 || e.minute > 130)) {
+      errors.push("Daqiqa 1 dan 130 gacha bo‘lishi kerak.")
+    }
+    if (e.playerId && (e.type === "RED" || e.type === "SECOND_YELLOW")) {
+      redCount.set(e.playerId, (redCount.get(e.playerId) ?? 0) + 1)
+    }
+    if (e.playerId && e.type === "YELLOW") {
+      yellowCount.set(e.playerId, (yellowCount.get(e.playerId) ?? 0) + 1)
+    }
+  }
+
+  if ([...redCount.values()].some((count) => count > 1)) {
+    errors.push("Bitta futbolchiga bir o‘yinda bittadan ortiq qizil kartochka berib bo‘lmaydi.")
+  }
+  if ([...yellowCount.values()].some((count) => count > 1)) {
+    errors.push("Ikkinchi sariq kartochka uchun «Ikkinchi sariq» turini tanlang.")
+  }
+  return unknownScorers
+}
+
 /**
  * Natijani saqlashdan oldin tekshiradi: hisob, gol mualliflari, holat va
  * pley-off qoidalari bir-biriga mos bo'lishi shart.
@@ -78,9 +130,14 @@ export function validateResult(
     return { errors, warnings }
   }
 
+  // Texnik natijada gollar yozilmaydi, lekin kartochkalar (diskvalifikatsiya va Fair Play uchun) saqlanadi
   if (input.forfeitLoser) {
     if (input.status !== "FINISHED") errors.push("Texnik mag‘lubiyat faqat yakunlangan o‘yinga beriladi.")
-    return { errors, warnings }
+    if (input.events.some((e) => isGoal(e.type) || e.type === "OWN_GOAL")) {
+      errors.push("Texnik natijada gollar yozilmaydi — faqat kartochkalar saqlanadi.")
+    }
+    checkEvents(input.events, homeId, awayId, rosterOf, teamName, errors)
+    return { errors: [...new Set(errors)], warnings }
   }
 
   if (!validScore(input.homeScore) || !validScore(input.awayScore)) {
@@ -131,50 +188,7 @@ export function validateResult(
     )
   }
 
-  const redCount = new Map<ID, number>()
-  const yellowCount = new Map<ID, number>()
-  let unknownScorers = 0
-
-  for (const e of input.events) {
-    if (e.seasonTeamId !== homeId && e.seasonTeamId !== awayId) {
-      errors.push("Hodisa ushbu o‘yinda qatnashmayotgan jamoaga biriktirilgan.")
-      continue
-    }
-    const roster = rosterOf(e.seasonTeamId)
-    if (e.playerId && !roster.has(e.playerId)) {
-      errors.push(`Tanlangan futbolchi ${teamName(e.seasonTeamId)} tarkibida yo‘q.`)
-    }
-    if (!e.playerId) {
-      if (isGoal(e.type) || e.type === "OWN_GOAL") unknownScorers++
-      else errors.push("Kartochka uchun futbolchini tanlang.")
-    }
-    if (e.assistId) {
-      if (!roster.has(e.assistId)) errors.push("Assist bergan futbolchi gol urgan jamoa tarkibida bo‘lishi kerak.")
-      if (e.assistId === e.playerId) errors.push("Futbolchi o‘z goliga assist bera olmaydi.")
-    }
-    if (e.minute != null && (!Number.isInteger(e.minute) || e.minute < 1 || e.minute > 130)) {
-      errors.push("Daqiqa 1 dan 130 gacha bo‘lishi kerak.")
-    }
-    if (e.playerId && (e.type === "RED" || e.type === "SECOND_YELLOW")) {
-      redCount.set(e.playerId, (redCount.get(e.playerId) ?? 0) + 1)
-    }
-    if (e.playerId && e.type === "YELLOW") {
-      yellowCount.set(e.playerId, (yellowCount.get(e.playerId) ?? 0) + 1)
-    }
-  }
-
-  for (const [, count] of redCount) {
-    if (count > 1) {
-      errors.push("Bitta futbolchiga bir o‘yinda bittadan ortiq qizil kartochka berib bo‘lmaydi.")
-      break
-    }
-  }
-  for (const [, count] of yellowCount) {
-    if (count > 1) {
-      errors.push("Ikkinchi sariq kartochka uchun «Ikkinchi sariq» turini tanlang.")
-      break
-    }
-  }
+  const unknownScorers = checkEvents(input.events, homeId, awayId, rosterOf, teamName, errors)
 
   if (unknownScorers > 0) {
     warnings.push(`${unknownScorers} ta gol muallifi ko‘rsatilmagan. Ular to‘purarlar reytingiga kirmaydi.`)

@@ -39,6 +39,8 @@ import { createSeed } from "./seed"
 import { normalizeSocial, type SocialField } from "@/lib/social"
 import { DEFAULT_LEAGUE, staticMeta } from "@/lib/seo"
 import { mockVisitStats, recordMockVisit } from "./visits"
+import { feedbackProblem, shortNameOf, teamApplicationProblem, upcomingSeason } from "@/lib/applications"
+import { cleanName, nameKey, sameName } from "@/lib/team-names"
 
 const STORAGE_KEY = "pol-mock-db"
 const SESSION_KEY = "pol-admin-session"
@@ -612,6 +614,13 @@ export const mockApi: LeagueApi = {
     const involved = new Set(matches.flatMap((m) => [m.homeId, m.awayId]).filter(Boolean) as ID[])
     const teams = db.seasonTeams.filter((s) => involved.has(s.id)).map((s) => teamView(db, s))
     return delay({ team, records, matches, teams })
+  },
+
+  async getMatchSeason(matchId) {
+    const db = load()
+    const match = db.matches.find((m) => m.id === matchId)
+    if (!match || testSeasonIds(db).has(match.seasonId)) fail("O‘yin topilmadi.")
+    return delay({ seasonId: match!.seasonId })
   },
 
   async getPlayerProfile(playerId) {
@@ -1642,6 +1651,10 @@ export const mockApi: LeagueApi = {
     if (!input.name.trim()) fail("Maydon nomini kiriting.")
     let venue = id ? db.venues.find((v) => v.id === id) : undefined
     if (id && !venue) fail("Maydon topilmadi.")
+    const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
+    if (db.venues.some((v) => v.id !== id && same(v.name, input.name) && same(v.village ?? "", input.village))) {
+      fail(`«${input.name.trim()}» maydoni allaqachon ro‘yxatda bor.`)
+    }
     if (!venue) {
       venue = { id: newId("v"), name: input.name.trim(), village: input.village.trim() }
       db.venues.push(venue)
@@ -1734,13 +1747,7 @@ export const mockApi: LeagueApi = {
   async uploadMedia(file) {
     requireAdmin()
     // Namunaviy rejimda rasm brauzer xotirasida data URL sifatida saqlanadi
-    const url = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = () => resolve(String(reader.result))
-      reader.onerror = () => reject(new ApiError("Rasmni o‘qib bo‘lmadi."))
-      reader.readAsDataURL(file)
-    })
-    return delay({ url })
+    return delay({ url: await readDataUrl(file) })
   },
 
   async resetDemoData() {
@@ -1749,6 +1756,210 @@ export const mockApi: LeagueApi = {
     save()
     return delay(undefined)
   },
+
+  // ---------- Murojaatlar ----------
+
+  async submitTeamApplication(input, logo) {
+    // Bot to'ldirgan ko'rinmas maydon: ariza saqlanmaydi
+    if (input.website?.trim()) return delay(undefined)
+    const problem = teamApplicationProblem(input)
+    if (problem) fail(problem)
+    const db = load()
+    const name = cleanName(input.teamName)
+    if ((db.applications ?? []).some((a) => a.status === "NEW" && sameName(a.teamName, name))) {
+      fail(`«${name}» nomli jamoa arizasi allaqachon yuborilgan va ko‘rib chiqilmoqda. Qayta yuborish shart emas.`)
+    }
+    const registering = db.seasons.filter((s) => s.status !== "FINISHED" && !s.test && !db.groups.some((g) => g.seasonId === s.id))
+    if (db.seasonTeams.some((st) => registering.some((s) => s.id === st.seasonId) && sameName(st.name, name))) {
+      fail(`«${name}» nomli jamoa yangi mavsumga allaqachon ro‘yxatdan o‘tgan. Agar bu boshqa jamoa bo‘lsa, boshqa nom tanlang.`)
+    }
+    const logoUrl = await readDataUrl(logo)
+    ;(db.applications ??= []).unshift({
+      id: newId("ap"),
+      teamName: name,
+      village: cleanName(input.village) || null,
+      logoUrl,
+      contactPhone: cleanName(input.contactPhone) || null,
+      status: "NEW",
+      createdAt: new Date().toISOString(),
+      decidedAt: null,
+      decidedBy: null,
+      seasonId: null,
+      seasonName: null,
+      teamId: null,
+      existingTeam: false,
+      players: input.players.map((p) => ({ firstName: cleanName(p.firstName), lastName: cleanName(p.lastName), birthYear: p.birthYear ?? null, position: p.position })),
+    })
+    save()
+    return delay(undefined)
+  },
+
+  async submitFeedback(input) {
+    if (input.website?.trim()) return delay(undefined)
+    const problem = feedbackProblem(input)
+    if (problem) fail(problem)
+    const db = load()
+    ;(db.feedback ??= []).unshift({
+      id: newId("fb"),
+      kind: input.kind,
+      body: input.body.trim(),
+      authorName: cleanName(input.authorName) || null,
+      phone: cleanName(input.phone) || null,
+      status: "NEW",
+      createdAt: new Date().toISOString(),
+    })
+    save()
+    return delay(undefined)
+  },
+
+  async getApplicationCounts() {
+    requireAdmin()
+    const db = load()
+    return delay({
+      teams: (db.applications ?? []).filter((a) => a.status === "NEW").length,
+      messages: (db.feedback ?? []).filter((m) => m.status === "NEW").length,
+    })
+  },
+
+  async listTeamApplications() {
+    requireAdmin()
+    const db = load()
+    return delay(
+      (db.applications ?? []).map((a) => ({ ...a, existingTeam: a.status !== "ACCEPTED" && db.teams.some((t) => sameName(t.name, a.teamName)) })),
+    )
+  },
+
+  async acceptTeamApplication(id) {
+    requireAdmin()
+    const db = load()
+    const app = application(db, id)
+    if (app.status === "ACCEPTED") fail("Bu ariza allaqachon qabul qilingan.")
+    // Jamoa o'zi yangi mavsumga qo'shiladi; boshlangan (qur'a tashlangan yoki o'yini o'tgan) mavsumga qo'shilmaydi
+    const s = upcomingSeason(db.seasons) ?? fail("Yangi mavsum hali ochilmagan. Avval «Mavsumlar» bo‘limida yangi mavsum oching — ariza o‘sha mavsumga qabul qilinadi.")
+    const seasonId = s.id
+    const started = db.groups.some((g) => g.seasonId === seasonId) || db.matches.some((m) => m.seasonId === seasonId && m.status === "FINISHED")
+    if (started) fail(`«${s.name}» boshlangan (qur’a tashlangan yoki o‘yinlar o‘tkazilgan) — unga jamoa qo‘shib bo‘lmaydi. Avval «Mavsumlar» bo‘limida yangi mavsum oching.`)
+    let team = db.teams.find((t) => sameName(t.name, app.teamName))
+    const existing = Boolean(team)
+    if (team && db.seasonTeams.some((x) => x.seasonId === seasonId && x.teamId === team!.id)) {
+      fail(`«${team.name}» jamoasi ${s.name}da allaqachon ishtirok etadi — ariza takroran qabul qilinmaydi. Bu takroriy ariza bo‘lsa, uni e’tiborsiz qoldiring.`)
+    }
+    requireTeamListOpen(db, seasonId, "yangi jamoa qo‘shib")
+    if (!team) {
+      team = { id: newId("t"), name: app.teamName, shortName: shortNameOf(app.teamName), village: app.village ?? "", primaryColor: "#145A3A", secondaryColor: "#E2BF4F", logoUrl: app.logoUrl, active: true }
+      db.teams.push(team)
+    } else {
+      // Ariza shartiga ko'ra jamoa mavsumda arizadagi logotip bilan ishtirok etadi
+      team.logoUrl = app.logoUrl
+      if (!team.village && app.village) team.village = app.village
+    }
+    const st: SeasonTeam = { id: newId("st"), seasonId, teamId: team.id, name: team.name, shortName: team.shortName }
+    db.seasonTeams.push(st)
+    // Jamoaning oldingi mavsumlarida o'ynagan futbolchi ism-familiyasi bo'yicha taniladi — statistikasi davom etadi
+    const formerTeams = new Set(db.seasonTeams.filter((x) => x.teamId === team!.id && x.id !== st.id).map((x) => x.id))
+    const former = new Map<string, ID>()
+    for (const r of db.rosters.filter((x) => formerTeams.has(x.seasonTeamId))) {
+      const p = db.players.find((x) => x.id === r.playerId)
+      if (p) former.set(nameKey(`${p.firstName} ${p.lastName}`), p.id)
+    }
+    let returning = 0
+    for (const ap of app.players) {
+      const knownId = former.get(nameKey(`${ap.firstName} ${ap.lastName}`))
+      let player = knownId && !db.rosters.some((r) => r.seasonId === seasonId && r.playerId === knownId) ? db.players.find((p) => p.id === knownId) : undefined
+      if (player) {
+        returning++
+        player.position = ap.position
+        if (ap.birthYear != null) player.birthYear = ap.birthYear
+      } else {
+        player = { id: newId("p"), firstName: ap.firstName, lastName: ap.lastName, birthYear: ap.birthYear ?? undefined, position: ap.position }
+        db.players.push(player)
+      }
+      db.rosters.push({ id: newId("r"), seasonId, seasonTeamId: st.id, playerId: player.id })
+    }
+    Object.assign(app, { status: "ACCEPTED", seasonId, seasonName: s.name, teamId: team.id, decidedAt: new Date().toISOString(), decidedBy: currentUser()?.displayName ?? "Tizim" })
+    audit(db, "Ariza", `«${team.name}» arizasi qabul qilindi: jamoa ${s.name}ga qo‘shildi, tarkibga ${app.players.length} ta futbolchi yozildi`)
+    save()
+    return delay({ teamName: team.name, seasonName: s.name, players: app.players.length, returning, existingTeam: existing })
+  },
+
+  async ignoreTeamApplication(id) {
+    requireAdmin()
+    const db = load()
+    const app = application(db, id)
+    if (app.status === "ACCEPTED") fail("Qabul qilingan arizani e’tiborsiz qoldirib bo‘lmaydi — jamoa allaqachon mavsumga qo‘shilgan.")
+    if (app.status === "NEW") {
+      Object.assign(app, { status: "IGNORED", decidedAt: new Date().toISOString(), decidedBy: currentUser()?.displayName ?? "Tizim" })
+      audit(db, "Ariza", `«${app.teamName}» arizasi e’tiborsiz qoldirildi`)
+      save()
+    }
+    return delay(undefined)
+  },
+
+  async restoreTeamApplication(id) {
+    requireAdmin()
+    const db = load()
+    const app = application(db, id)
+    if (app.status === "IGNORED") {
+      Object.assign(app, { status: "NEW", decidedAt: null, decidedBy: null })
+      audit(db, "Ariza", `«${app.teamName}» arizasi qayta ko‘rib chiqishga qaytarildi`)
+      save()
+    }
+    return delay(undefined)
+  },
+
+  async deleteTeamApplication(id) {
+    requireAdmin()
+    const db = load()
+    const app = application(db, id)
+    db.applications = (db.applications ?? []).filter((a) => a.id !== id)
+    audit(db, "Ariza", `«${app.teamName}» arizasi o‘chirildi`)
+    save()
+    return delay(undefined)
+  },
+
+  async listFeedback() {
+    requireAdmin()
+    return delay(load().feedback ?? [])
+  },
+
+  async markFeedbackRead(id) {
+    requireAdmin()
+    const db = load()
+    const m = (db.feedback ?? []).find((x) => x.id === id) ?? fail("Murojaat topilmadi. Sahifani yangilang.")
+    m.status = "READ"
+    save()
+    return delay(undefined)
+  },
+
+  async markAllFeedbackRead() {
+    requireAdmin()
+    const db = load()
+    for (const m of db.feedback ?? []) m.status = "READ"
+    save()
+    return delay(undefined)
+  },
+
+  async deleteFeedback(id) {
+    requireAdmin()
+    const db = load()
+    db.feedback = (db.feedback ?? []).filter((m) => m.id !== id)
+    audit(db, "Murojaat", "Saytdan kelgan murojaat o‘chirildi")
+    save()
+    return delay(undefined)
+  },
+}
+
+function application(db: LeagueDb, id: ID) {
+  return (db.applications ?? []).find((a) => a.id === id) ?? fail("Ariza topilmadi. Sahifani yangilang.")
+}
+
+function readDataUrl(file: Blob) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result))
+    reader.onerror = () => reject(new ApiError("Rasmni o‘qib bo‘lmadi."))
+    reader.readAsDataURL(file)
+  })
 }
 
 // ---------- Validatsiya yordamchilari ----------
@@ -1769,7 +1980,7 @@ function validateTeam(db: LeagueDb, input: TeamInput, exceptId?: ID) {
   if (name.length < 2) fail("Jamoa nomi kamida 2 ta harfdan iborat bo‘lsin.")
   if (!/^[A-Za-zА-Яа-яЎўҚқҒғҲҳ‘’ʻ']{2,4}$/.test(input.shortName.trim())) fail("Qisqa nom 2–4 ta harfdan iborat bo‘lsin, masalan NAV.")
   if (!input.village.trim()) fail("Qishloq nomini kiriting.")
-  if (db.teams.some((t) => t.id !== exceptId && t.name.toLowerCase() === name.toLowerCase())) fail(`«${name}» nomli jamoa allaqachon bor.`)
+  if (db.teams.some((t) => t.id !== exceptId && sameName(t.name, name))) fail(`«${cleanName(name)}» nomli jamoa allaqachon bor. Boshqa nom tanlang yoki o‘sha jamoani mavsumga qo‘shing.`)
 }
 
 function validatePlayer(input: PlayerInput) {

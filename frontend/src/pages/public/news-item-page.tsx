@@ -2,6 +2,7 @@ import { ArrowLeft, Newspaper } from "lucide-react"
 import { Link, useParams } from "react-router"
 import { useNewsItem } from "@/api/hooks"
 import { isNotFound } from "@/api/types"
+import { RichText } from "@/components/league/rich-text"
 import { ErrorState, NotFoundState, PageSkeleton } from "@/components/league/states"
 import { useLeagueMeta } from "@/hooks/use-document-meta"
 import { formatDate } from "@/lib/format"
@@ -17,7 +18,7 @@ export default function NewsItemPage() {
   if (error || !data) return <ErrorState message={error?.message} onRetry={() => refetch()} className="container-page" />
   return (
     <article className="container-page pt-5 md:pt-8">
-      <div className="mx-auto max-w-2xl">
+      <div className="mx-auto max-w-2xl [overflow-wrap:anywhere]">
         <Link to="/yangiliklar" className="mb-4 inline-flex min-h-10 items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="size-4" aria-hidden="true" />
           Yangiliklar
@@ -27,11 +28,7 @@ export default function NewsItemPage() {
         </time>
         <h1 className="mt-1 font-display text-3xl md:text-5xl">{data.title}</h1>
         <p className="mt-3 text-md text-muted-foreground md:text-lg">{data.excerpt}</p>
-        <div className="mt-6 space-y-4 border-t border-border pt-6 text-base leading-7 md:text-lg md:leading-8">
-          {data.body.split(/\n{2,}/).map((para, i) => (
-            <p key={i}>{para}</p>
-          ))}
-        </div>
+        <RichText text={data.body} className="mt-6 space-y-4 border-t border-border pt-6 md:text-lg md:leading-8" />
       </div>
     </article>
   )

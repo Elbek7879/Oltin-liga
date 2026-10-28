@@ -12,7 +12,10 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Pattern;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import uz.payariq.liga.domain.Schedule;
@@ -42,18 +45,44 @@ public class VisitService {
             Pattern.CASE_INSENSITIVE);
     private static final Pattern PHONE = Pattern.compile("mobi|android|iphone|ipad|ipod", Pattern.CASE_INSENSITIVE);
 
+    private static final int PURGE_THRESHOLD = 10_000;
+
+    private record Window(long minute, int count) {
+    }
+
     private final JdbcTemplate jdbc;
     private final SeoService seo;
     private final Clock clock;
+    /**
+     * Bitta IP manzildan daqiqasiga shundan ko'p tashrif yozilmaydi (skript bilan sonni sun'iy oshirishdan himoya).
+     * Mobil operatorlarda ko'p abonent bitta IP'dan chiqadi — shuning uchun chegara kengroq.
+     */
+    private final int maxPerMinute;
+    private final Map<String, Window> perIp = new ConcurrentHashMap<>();
+    private final AtomicLong lastPurgeMinute = new AtomicLong();
 
-    public VisitService(JdbcTemplate jdbc, SeoService seo, Clock clock) {
+    public VisitService(JdbcTemplate jdbc, SeoService seo, Clock clock, @Value("${liga.visits.max-per-minute:120}") int maxPerMinute) {
         this.jdbc = jdbc;
         this.seo = seo;
         this.clock = clock;
+        this.maxPerMinute = maxPerMinute;
     }
 
     private LocalDate today() {
         return LocalDate.ofInstant(clock.instant(), Schedule.ZONE);
+    }
+
+    /** Shu IP manzildan yana tashrif yozish mumkinmi (daqiqalik chegara); ortig'i jimgina tashlanadi */
+    public boolean allow(String ip) {
+        long minute = clock.millis() / 60_000;
+        Window w = perIp.merge(ip == null ? "" : ip, new Window(minute, 1),
+                (old, n) -> old.minute() == minute ? new Window(minute, old.count() + 1) : n);
+        // Eski daqiqalar yozuvlari tozalanadi (eng ko'pi bilan daqiqasiga bir marta) — xotira cheksiz o'smaydi
+        long last = lastPurgeMinute.get();
+        if (perIp.size() > PURGE_THRESHOLD && last < minute && lastPurgeMinute.compareAndSet(last, minute)) {
+            perIp.entrySet().removeIf(e -> e.getValue().minute() < minute);
+        }
+        return w.count() <= maxPerMinute;
     }
 
     /** Sahifa ochilishini yozadi; noto'g'ri yoki keraksiz so'rov jimgina e'tiborsiz qoldiriladi */

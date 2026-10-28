@@ -45,9 +45,11 @@ public class LiveUpdates {
         return t;
     });
     private final ObjectMapper json;
+    private final BundleCache bundles;
 
-    public LiveUpdates(ObjectMapper json) {
+    public LiveUpdates(ObjectMapper json, BundleCache bundles) {
         this.json = json;
+        this.bundles = bundles;
         // Proksi va brauzer ulanishni uzib qo'ymasligi uchun har 25 soniyada bo'sh xabar
         worker.scheduleAtFixedRate(() -> broadcast(() -> SseEmitter.event().comment("ping")), 25, 25, TimeUnit.SECONDS);
     }
@@ -76,6 +78,8 @@ public class LiveUpdates {
 
     @TransactionalEventListener(fallbackExecution = true)
     public void on(LiveEvent event) {
+        // Avval kesh tozalanadi, keyin xabar yuboriladi — sahifalar qayta so'raganda yangi ma'lumot oladi
+        bundles.evictAll();
         String data = json.writeValueAsString(Map.of(
                 "seasonId", event.seasonId().toString(),
                 "matchId", event.matchId().toString(),

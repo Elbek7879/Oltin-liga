@@ -14,16 +14,18 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Label } from "@/components/ui/label"
 import { useSeason } from "@/hooks/use-season"
+import { isSessionExpired } from "@/lib/session-expired"
 import { cn } from "@/lib/utils"
 
 /** Amalni bajaradi va natija haqida tushunarli xabar chiqaradi */
-export async function runAction<T>(fn: () => Promise<T>, success: string): Promise<T | undefined> {
+export async function runAction<T>(fn: () => Promise<T>, success: string | ((result: T) => string)): Promise<T | undefined> {
   try {
     const result = await fn()
-    toast.success(success)
+    toast.success(typeof success === "function" ? success(result) : success)
     return result
   } catch (err) {
-    toast.error(err instanceof Error ? err.message : "Amalni bajarib bo‘lmadi. Qayta urinib ko‘ring.")
+    // Sessiya tugagan bo'lsa, buni qayta kirish oynasi aytadi — alohida xato xabari chiqmaydi
+    if (!isSessionExpired()) toast.error(err instanceof Error ? err.message : "Amalni bajarib bo‘lmadi. Qayta urinib ko‘ring.")
     return undefined
   }
 }

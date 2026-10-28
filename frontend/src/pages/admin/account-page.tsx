@@ -47,7 +47,7 @@ export default function AccountPage() {
           <dt className="text-muted-foreground">Ism</dt>
           <dd className="font-semibold">{me.displayName}</dd>
           <dt className="text-muted-foreground">Login</dt>
-          <dd className="font-mono">{me.username}</dd>
+          <dd data-translit="off" className="font-mono">{me.username}</dd>
           <dt className="text-muted-foreground">Roli</dt>
           <dd>
             <span className="font-semibold">{ROLE_LABELS[me.role]}</span>

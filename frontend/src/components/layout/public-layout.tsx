@@ -9,6 +9,7 @@ import { BookOpen, Archive,
   ListOrdered,
   LogIn,
   Menu,
+  MessageSquarePlus,
   Network,
   Newspaper,
   Shield,
@@ -51,6 +52,7 @@ const MORE_NAV = [
   { to: "/homiylar", label: "Homiylar", icon: Handshake },
   { to: "/nizom", label: "Musobaqa nizomi", icon: BookOpen },
   { to: "/liga-haqida", label: "Liga haqida", icon: Info },
+  { to: "/murojaat", label: "Murojaat va arizalar", icon: MessageSquarePlus },
 ]
 
 const BOTTOM_NAV = [
@@ -65,16 +67,17 @@ function DesktopNav() {
     <nav aria-label="Asosiy menyu" className="hidden lg:block">
       <ul className="flex items-center gap-0.5">
         {[...MAIN_NAV, { to: "/mavsumlar", label: "Arxiv", icon: Archive }].map((item) => (
-          // 1280px dan tor ekranda «Asosiy» o'rniga logotip bosh sahifaga olib boradi
-          <li key={item.to} className={cn(item.to === "/" && "lg:max-xl:hidden")}>
+          // 1280px dan tor ekranda «Asosiy» o'rniga logotip bosh sahifaga olib boradi.
+          // Kirill matni kengroq: 1536px gacha «Asosiy» yashiriladi va oraliqlar ixchamlashadi — o'ngdagi tugmalar sig'adi
+          <li key={item.to} className={cn(item.to === "/" && "lg:max-xl:hidden xl:max-2xl:cyrl:hidden")}>
             <NavLink
               to={item.to}
               end={"end" in item ? item.end : false}
               className={({ isActive }) =>
                 cn(
-                  "relative block rounded-md px-2 py-2 text-sm font-semibold whitespace-nowrap text-band-muted transition-colors hover:text-band-foreground xl:px-3",
+                  "relative block rounded-md px-2 py-2 text-sm font-semibold whitespace-nowrap text-band-muted transition-colors hover:text-band-foreground xl:px-3 xl:max-2xl:cyrl:px-2",
                   isActive &&
-                    "text-band-foreground after:absolute after:inset-x-2 after:-bottom-[13px] xl:after:inset-x-3 after:h-[3px] after:rounded-full after:bg-gold-400",
+                    "text-band-foreground after:absolute after:inset-x-2 after:-bottom-[13px] xl:after:inset-x-3 xl:max-2xl:cyrl:after:inset-x-2 after:h-[3px] after:rounded-full after:bg-gold-400",
                 )
               }
             >
@@ -249,6 +252,7 @@ function Footer() {
             <li><Link className="hover:text-foreground" to="/ramziy-jamoa">Ramziy jamoa</Link></li>
             <li><Link className="hover:text-foreground" to="/nizom">Musobaqa nizomi</Link></li>
             <li><Link className="hover:text-foreground" to="/liga-haqida">Liga haqida</Link></li>
+            <li><Link className="hover:text-foreground" to="/murojaat">Murojaat va arizalar</Link></li>
             <li><Link className="hover:text-foreground" to="/homiylar">Homiy bo‘lish</Link></li>
             <li><Link className="hover:text-foreground" to="/mavsumlar">Arxiv</Link></li>
             <li><Link className="hover:text-foreground" to="/maxfiylik">Maxfiylik siyosati</Link></li>
@@ -282,7 +286,8 @@ export function PublicLayout() {
   // Doimiy bo'limlar nomi; jamoa, futbolchi, o'yin va yangilik sahifalari nomini o'zi qo'yadi
   useLeagueMeta((league) => staticMeta(location.pathname, league))
   useVisitTracking()
-  const seasonPages = !["/yangiliklar", "/homiylar", "/liga-haqida", "/maxfiylik"].some((p) => location.pathname.startsWith(p))
+  // Mavsum hali ochilmagan bo'lsa ham ishlaydigan sahifalar (masalan, birinchi mavsumga ariza yuborish)
+  const seasonPages = !["/yangiliklar", "/homiylar", "/liga-haqida", "/maxfiylik", "/murojaat"].some((p) => location.pathname.startsWith(p))
   const noSeasons = !isLoading && seasons.length === 0 && seasonPages
   return (
     <div className="flex min-h-dvh flex-col">
@@ -307,7 +312,8 @@ export function PublicLayout() {
         </div>
       </header>
       <ArchiveBanner />
-      <main id="main" className="flex-1 pb-6 md:pb-10">
+      {/* Kamida bir ekran balandlik: ma'lumot yuklanguncha footer ko'rinib, keyin pastga «sakramaydi» (CLS) */}
+      <main id="main" className="min-h-[calc(100svh-3.5rem)] flex-1 pb-6 md:min-h-[calc(100svh-4rem)] md:pb-10">
         {noSeasons ? <NoSeasonYet /> : <Outlet />}
       </main>
       <Footer />

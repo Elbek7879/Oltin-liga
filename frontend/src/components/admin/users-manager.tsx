@@ -71,9 +71,10 @@ function Credentials({ username, password: secret }: { username: string; passwor
     <div className="space-y-3">
       <dl className="grid grid-cols-[5rem_1fr] gap-y-1 rounded-xl bg-muted p-4 text-sm">
         <dt className="text-muted-foreground">Login</dt>
-        <dd className="font-mono font-semibold break-all">{username}</dd>
+        {/* Login va parol kirill rejimida ham aynan shunday ko'rsatiladi (o'girilsa, noto'g'ri aytib beriladi) */}
+        <dd data-translit="off" className="font-mono font-semibold break-all">{username}</dd>
         <dt className="text-muted-foreground">Parol</dt>
-        <dd className="font-mono font-semibold break-all">{secret}</dd>
+        <dd data-translit="off" className="font-mono font-semibold break-all">{secret}</dd>
       </dl>
       <p className="text-sm text-muted-foreground">Bu ma’lumotlarni yordamchiga shaxsan yoki shaxsiy xabarda yuboring. Oyna yopilgach parol qayta ko‘rsatilmaydi.</p>
       <Button
@@ -356,7 +357,7 @@ export function UsersManager() {
                       {!u.enabled && <span className="rounded bg-destructive/10 px-1.5 py-0.5 text-2xs font-semibold text-destructive">O‘chirilgan</span>}
                     </p>
                     <p className="truncate text-sm text-muted-foreground">
-                      {ROLE_LABELS[u.role]}, login: <span className="font-mono">{u.username}</span>
+                      {ROLE_LABELS[u.role]}, login: <span data-translit="off" className="font-mono">{u.username}</span>
                     </p>
                     <p className="text-xs text-muted-foreground">{u.lastLoginAt ? `Oxirgi kirish: ${formatDateTime(u.lastLoginAt)}` : "Hali kirmagan"}</p>
                   </div>

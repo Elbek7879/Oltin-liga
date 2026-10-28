@@ -93,7 +93,7 @@ export default function MatchesPage() {
         </Tabs>
         <div className="grid grid-cols-2 gap-2 md:flex">
           <Select value={stage} onValueChange={(v) => update("bosqich", v)}>
-            <SelectTrigger aria-label="Bosqich yoki guruh" className="w-full md:w-44">
+            <SelectTrigger aria-label="Bosqich yoki guruh" className="w-full text-sm md:w-44">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -107,7 +107,7 @@ export default function MatchesPage() {
             </SelectContent>
           </Select>
           <Select value={team} onValueChange={(v) => update("jamoa", v)}>
-            <SelectTrigger aria-label="Jamoa" className="w-full md:w-48">
+            <SelectTrigger aria-label="Jamoa" className="w-full text-sm md:w-48">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

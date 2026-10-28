@@ -130,8 +130,14 @@ public class ContentService {
 
     public VenueDto saveVenue(UUID id, Requests.VenueInput in) {
         Venue v = id == null ? new Venue() : venues.findById(id).orElseThrow(() -> ApiException.notFound("Maydon topilmadi."));
-        v.name = in.name().trim();
-        v.village = in.village() == null ? "" : in.village().trim();
+        String name = in.name().trim();
+        String village = in.village() == null ? "" : in.village().trim();
+        // Bir qishloqda bir xil nomli ikkita maydon — odatda tasodifan qayta qo'shilgan; o'yin belgilashda adashtiradi
+        boolean duplicate = venues.findAll().stream().anyMatch(o -> !o.getId().equals(id)
+                && o.name.equalsIgnoreCase(name) && (o.village == null ? "" : o.village).equalsIgnoreCase(village));
+        if (duplicate) throw ApiException.conflict("«" + name + "» maydoni allaqachon ro‘yxatda bor.");
+        v.name = name;
+        v.village = village;
         venues.save(v);
         audit.record("Maydon", "«" + v.name + "» saqlandi", "VENUE", v.getId());
         return VenueDto.of(v);

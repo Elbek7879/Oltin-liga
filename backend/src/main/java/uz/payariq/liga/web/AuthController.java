@@ -64,23 +64,24 @@ public class AuthController {
     @PostMapping("/login")
     @Transactional
     public AdminUser login(@Valid @RequestBody Requests.Login in, HttpServletRequest request, HttpServletResponse response) {
-        String key = in.username().trim().toLowerCase() + "|" + request.getRemoteAddr();
-        attempts.checkAllowed(key);
+        String username = in.username().trim();
+        String ip = request.getRemoteAddr();
+        attempts.checkAllowed(username, ip);
         Authentication auth;
         try {
-            auth = authenticationManager.authenticate(UsernamePasswordAuthenticationToken.unauthenticated(in.username().trim(), in.password()));
+            auth = authenticationManager.authenticate(UsernamePasswordAuthenticationToken.unauthenticated(username, in.password()));
         } catch (DisabledException ex) {
-            attempts.recordFailure(key);
+            attempts.recordFailure(username, ip);
             // Spring holatni paroldan oldin tekshiradi; "o'chirilgan" xabari faqat to'g'ri parolda ko'rsatiladi
             boolean passwordOk = users.findByUsernameIgnoreCase(in.username().trim()).map(u -> encoder.matches(in.password(), u.passwordHash)).orElse(false);
             if (passwordOk) throw ex;
             throw new BadCredentialsException("Login yoki parol noto‘g‘ri");
         } catch (AuthenticationException ex) {
-            attempts.recordFailure(key);
+            attempts.recordFailure(username, ip);
             // Foydalanuvchi bor-yo'qligini oshkor qilmaslik uchun xabar bir xil
             throw new BadCredentialsException("Login yoki parol noto‘g‘ri");
         }
-        attempts.recordSuccess(key);
+        attempts.recordSuccess(username, ip);
         // Sessiya fiksatsiyasidan himoya: kirishdan keyin sessiya identifikatori yangilanadi
         HttpSession existing = request.getSession(false);
         if (existing != null) request.changeSessionId();

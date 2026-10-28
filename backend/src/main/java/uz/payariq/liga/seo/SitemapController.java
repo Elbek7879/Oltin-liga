@@ -6,20 +6,21 @@ import java.time.format.DateTimeFormatter;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import org.springframework.web.util.HtmlUtils;
 
 /**
- * robots.txt va sitemap.xml — qidiruv tizimlari uchun. Manzillar sayt qaysi domenda ochilgan bo'lsa,
- * o'sha domendan olinadi (production'da HTTPS proksi sarlavhalari orqali).
+ * robots.txt va sitemap.xml — qidiruv tizimlari uchun. Manzillar SITE_URL sozlamasidan olinadi
+ * (bo'sh bo'lsa — sayt qaysi domenda ochilgan bo'lsa, o'sha domendan).
  */
 @RestController
 public class SitemapController {
 
     private final SeoService seo;
+    private final SiteUrl site;
 
-    public SitemapController(SeoService seo) {
+    public SitemapController(SeoService seo, SiteUrl site) {
         this.seo = seo;
+        this.site = site;
     }
 
     @GetMapping(value = "/robots.txt", produces = "text/plain;charset=UTF-8")
@@ -48,7 +49,7 @@ public class SitemapController {
         return xml.append("</urlset>\n").toString();
     }
 
-    private static String base(HttpServletRequest request) {
-        return ServletUriComponentsBuilder.fromContextPath(request).replaceQuery(null).build().toUriString();
+    private String base(HttpServletRequest request) {
+        return site.base(request);
     }
 }

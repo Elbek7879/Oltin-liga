@@ -11,13 +11,16 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /** Barcha xatolar foydalanuvchiga o'zbek tilida, tushunarli ko'rinishda qaytariladi */
@@ -85,6 +88,17 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     ResponseEntity<ErrorBody> method() {
         return body(HttpStatus.METHOD_NOT_ALLOWED, "Bu manzil uchun so‘rov turi noto‘g‘ri.");
+    }
+
+    /** So'rovda majburiy parametr yo'q — mijoz xatosi, server jurnaliga xato sifatida yozilmaydi */
+    @ExceptionHandler({MissingServletRequestParameterException.class, MissingServletRequestPartException.class})
+    ResponseEntity<ErrorBody> missingParameter() {
+        return body(HttpStatus.BAD_REQUEST, "So‘rovda kerakli ma’lumot yetishmayapti.");
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    ResponseEntity<ErrorBody> mediaType() {
+        return body(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "So‘rov ma’lumotlari turi noto‘g‘ri. Ma’lumotlar JSON ko‘rinishida yuborilishi kerak.");
     }
 
     /** Muxlis sahifani yopdi va jonli oqim uzildi — bu xato emas: javob yozilmaydi, jurnalga tushmaydi */

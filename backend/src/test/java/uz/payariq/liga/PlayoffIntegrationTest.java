@@ -1,6 +1,7 @@
 package uz.payariq.liga;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -62,12 +63,23 @@ class PlayoffIntegrationTest extends IntegrationTestBase {
     }
 
     private void playGroupMatch(JsonNode m, String forcedWinner) throws Exception {
+        putJson("/api/admin/matches/" + m.get("id").asText() + "/result", groupResult(m, forcedWinner));
+    }
+
+    private Map<String, Object> groupResult(JsonNode m, String forcedWinner) {
         String home = m.get("homeId").asText();
         String away = m.get("awayId").asText();
         List<String> order = groupTeams.values().stream().filter(l -> l.contains(home)).findFirst().orElseThrow();
         int diff = Math.abs(order.indexOf(home) - order.indexOf(away));
         boolean homeWins = forcedWinner != null ? forcedWinner.equals(home) : order.indexOf(home) < order.indexOf(away);
-        putJson("/api/admin/matches/" + m.get("id").asText() + "/result", homeWins ? result(home, diff, away, 0) : result(home, 0, away, diff));
+        return homeWins ? result(home, diff, away, 0) : result(home, 0, away, diff);
+    }
+
+    private JsonNode groupMatch(String a, String b) throws Exception {
+        for (JsonNode m : bundle().get("matches")) {
+            if ("GROUP".equals(m.get("stage").asText()) && List.of(a, b).contains(m.get("homeId").asText()) && List.of(a, b).contains(m.get("awayId").asText())) return m;
+        }
+        throw new AssertionError("o'yin topilmadi");
     }
 
     private void setUp() throws Exception {
@@ -146,13 +158,111 @@ class PlayoffIntegrationTest extends IntegrationTestBase {
         assertThat(fin.get("timeConfirmed").asBoolean()).isTrue();
         assertThat(round("QF").get("homeId").asText()).as("endi B1 saralash o'ynaydi").isEqualTo(b1);
 
-        // Saralash o'yini o'tkazildi — pley-off boshlandi, guruh natijasi o'zgarsa ham setka o'zgarmaydi
+        // Saralash o'yini o'tkazildi — pley-off boshlandi: juftliklarni o'zgartiradigan guruh tuzatishi rad etiladi
         scheduleUndated(bundle(), java.time.LocalDate.of(2027, 7, 1));
         JsonNode playIn = round("QF");
         putJson("/api/admin/matches/" + playIn.get("id").asText() + "/result", result(playIn.get("homeId").asText(), 2, playIn.get("awayId").asText(), 0));
-        playGroupMatch(bMatch, b1);
+        perform(put("/api/admin/matches/" + bMatch.get("id").asText() + "/result"), groupResult(bMatch, b1), asAdmin())
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value(Matchers.containsString("Pley-off allaqachon boshlangan")));
+        assertThat(groupMatch(b1, b2).get("winnerId").asText()).as("rad etilgan natija saqlanmadi").isEqualTo(b2);
         assertThat(round("QF").get("homeId").asText()).isEqualTo(b1);
         assertThat(round("QF").get("status").asText()).isEqualTo("FINISHED");
+
+        // Juftliklarga ta'sir qilmaydigan tuzatish (A guruhida 4- va 5-o'rin) qabul qilinadi
+        String a4 = groupTeams.get("A").get(3);
+        String a5 = groupTeams.get("A").get(4);
+        perform(put("/api/admin/matches/" + groupMatch(a4, a5).get("id").asText() + "/result"), groupResult(groupMatch(a4, a5), a5), asAdmin())
+                .andExpect(status().isOk());
+        assertThat(groupMatch(a4, a5).get("winnerId").asText()).isEqualTo(a5);
+    }
+
+    @Test
+    @DisplayName("eskirgan forma: boshqa joyda o'zgargan natija ustidan yozilmaydi; versiyasiz (bot) saqlash ishlaydi")
+    void staleResultRejected() throws Exception {
+        setUp();
+        String a1 = groupTeams.get("A").get(0);
+        String a2 = groupTeams.get("A").get(1);
+        JsonNode m = groupMatch(a1, a2);
+        String url = "/api/admin/matches/" + m.get("id").asText() + "/result";
+        int opened = m.get("version").asInt();
+
+        // Forma ochilgan versiya bilan saqlanadi — javobda yangi versiya
+        Map<String, Object> first = new HashMap<>(result(m.get("homeId").asText(), 1, m.get("awayId").asText(), 0));
+        first.put("version", opened);
+        int saved = read(perform(put(url), first, asAdmin()).andExpect(status().isOk())).get("version").asInt();
+        assertThat(saved).isGreaterThan(opened);
+        assertThat(groupMatch(a1, a2).get("version").asInt()).isEqualTo(saved);
+
+        // Faqat kartochka qo'shilsa ham versiya oshadi
+        Map<String, Object> withCard = new HashMap<>(first);
+        List<Object> events = new ArrayList<>((List<?>) first.get("events"));
+        events.add(Map.of("type", "YELLOW", "seasonTeamId", m.get("awayId").asText(), "playerId", playerOf.get(m.get("awayId").asText()), "minute", 30));
+        withCard.put("events", events);
+        withCard.put("version", saved);
+        int afterCard = read(perform(put(url), withCard, asAdmin()).andExpect(status().isOk())).get("version").asInt();
+        assertThat(afterCard).isGreaterThan(saved);
+
+        // Eski versiyadagi forma rad etiladi, ma'lumot o'zgarmaydi
+        Map<String, Object> stale = new HashMap<>(result(m.get("homeId").asText(), 3, m.get("awayId").asText(), 0));
+        stale.put("version", saved);
+        perform(put(url), stale, asAdmin())
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value(Matchers.containsString("boshqa joyda o‘zgartirildi")));
+        assertThat(groupMatch(a1, a2).get("homeScore").asInt()).isEqualTo(1);
+
+        // Versiyasiz saqlash (Telegram bot, eski mijozlar) avvalgidek ishlaydi
+        perform(put(url), result(m.get("homeId").asText(), 2, m.get("awayId").asText(), 0), asAdmin()).andExpect(status().isOk());
+        assertThat(groupMatch(a1, a2).get("homeScore").asInt()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("texnik mag'lubiyat: hisob 3:0, kartochkalar saqlanadi")
+    void forfeitKeepsCards() throws Exception {
+        setUp();
+        JsonNode m = groupMatch(groupTeams.get("B").get(0), groupTeams.get("B").get(1));
+        String away = m.get("awayId").asText();
+        Map<String, Object> forfeit = new LinkedHashMap<>();
+        forfeit.put("status", "FINISHED");
+        forfeit.put("forfeitLoser", "away");
+        forfeit.put("events", List.of(
+                Map.of("type", "GOAL", "seasonTeamId", m.get("homeId").asText(), "playerId", playerOf.get(m.get("homeId").asText())),
+                Map.of("type", "RED", "seasonTeamId", away, "playerId", playerOf.get(away), "minute", 35)));
+        perform(put("/api/admin/matches/" + m.get("id").asText() + "/result"), forfeit, asAdmin()).andExpect(status().isOk());
+
+        JsonNode saved = groupMatch(groupTeams.get("B").get(0), groupTeams.get("B").get(1));
+        assertThat(saved.get("decidedBy").asText()).isEqualTo("FORFEIT");
+        assertThat(saved.get("homeScore").asInt()).isEqualTo(3);
+        List<String> types = new ArrayList<>();
+        for (JsonNode e : bundle().get("events")) if (e.get("matchId").asText().equals(m.get("id").asText())) types.add(e.get("type").asText());
+        assertThat(types).containsExactly("RED");
+    }
+
+    @Test
+    @DisplayName("muxlislar keshi: tashkilotchi o'zgarishi saytda darhol ko'rinadi")
+    void publicCacheEvictedOnChange() throws Exception {
+        setUp();
+        String url = "/api/public/seasons/" + seasonId + "/bundle";
+        JsonNode team = read(perform(get(url), null, null).andExpect(status().isOk())).get("teams").get(0);
+        putJson("/api/admin/teams/" + team.get("teamId").asText(), Map.of("name", "Yangi nomli jamoa", "shortName", team.get("shortName").asText(),
+                "village", team.get("village").asText(), "primaryColor", team.get("primaryColor").asText(), "secondaryColor", team.get("secondaryColor").asText()));
+        assertThat(read(perform(get(url), null, null)).get("teams").findValuesAsString("name")).contains("Yangi nomli jamoa");
+
+        // O'zgarmagan ma'lumot qayta yuklanmaydi: 304
+        String etag = perform(get(url), null, null).andReturn().getResponse().getHeader("ETag");
+        assertThat(etag).isNotBlank();
+        mvc.perform(get(url).header("If-None-Match", etag)).andExpect(status().isNotModified());
+    }
+
+    @Test
+    @DisplayName("o'yin havolasi: o'yin qaysi mavsumga tegishli ekani ommaviy API'da")
+    void matchSeasonLookup() throws Exception {
+        setUp();
+        JsonNode m = bundle().get("matches").get(0);
+        perform(get("/api/public/matches/" + m.get("id").asText() + "/season"), null, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.seasonId").value(seasonId));
+        perform(get("/api/public/matches/00000000-0000-0000-0000-000000000000/season"), null, null).andExpect(status().isNotFound());
     }
 
     @Test

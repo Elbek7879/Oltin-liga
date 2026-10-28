@@ -11,7 +11,8 @@ interface SeasonState {
   current: Season | undefined
   isArchive: boolean
   isLoading: boolean
-  setSeasonId: (id: ID) => void
+  /** persist: false — tanlov brauzerda saqlanmaydi (masalan, eski mavsum o'yiniga havola ochilganda) */
+  setSeasonId: (id: ID, options?: { persist?: boolean }) => void
 }
 
 const SeasonContext = createContext<SeasonState | null>(null)
@@ -54,8 +55,9 @@ export function SeasonProvider({ children, admin = false, enabled = true }: { ch
     if (!seasons.some((s) => s.id === selected || String(s.year) === selected)) setSelected(null)
   }, [seasons, selected])
 
-  const setSeasonId = useCallback((id: ID) => {
+  const setSeasonId = useCallback((id: ID, options?: { persist?: boolean }) => {
     setSelected(id)
+    if (options?.persist === false) return
     try {
       localStorage.setItem(KEY, id)
     } catch {

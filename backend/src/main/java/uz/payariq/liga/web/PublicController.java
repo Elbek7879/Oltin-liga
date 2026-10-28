@@ -12,10 +12,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import uz.payariq.liga.security.CurrentUser;
+import uz.payariq.liga.service.BundleCache;
 import uz.payariq.liga.service.LiveUpdates;
 import uz.payariq.liga.service.PublicReadService;
 import uz.payariq.liga.web.Dto.ArchiveBundle;
 import uz.payariq.liga.web.Dto.HeadToHead;
+import uz.payariq.liga.web.Dto.MatchSeason;
 import uz.payariq.liga.web.Dto.NewsDto;
 import uz.payariq.liga.web.Dto.PlayerProfile;
 import uz.payariq.liga.web.Dto.SeasonBundle;
@@ -31,10 +34,12 @@ public class PublicController {
 
     private final PublicReadService read;
     private final LiveUpdates live;
+    private final BundleCache bundles;
 
-    public PublicController(PublicReadService read, LiveUpdates live) {
+    public PublicController(PublicReadService read, LiveUpdates live, BundleCache bundles) {
         this.read = read;
         this.live = live;
+        this.bundles = bundles;
     }
 
     /** Jonli yangilanishlar oqimi: gol yoki natija saqlanishi bilan sahifa xabar oladi va ma'lumotni qayta yuklaydi */
@@ -55,10 +60,20 @@ public class PublicController {
         return read.seasons();
     }
 
-    /** Mavsumning barcha ommaviy ma'lumotlari bitta so'rovda — sekin mobil internetda ham tez */
+    /**
+     * Mavsumning barcha ommaviy ma'lumotlari bitta so'rovda — sekin mobil internetda ham tez.
+     * Muxlislarga qisqa keshdan beriladi va sinov mavsumi ko'rsatilmaydi; tashkilotchilar har doim yangisini oladi.
+     */
     @GetMapping("/seasons/{seasonId}/bundle")
     public ResponseEntity<SeasonBundle> bundle(@PathVariable UUID seasonId) {
-        return ResponseEntity.ok().cacheControl(CacheControl.noCache()).body(read.bundle(seasonId));
+        SeasonBundle body = CurrentUser.anonymous() ? bundles.get(seasonId, () -> read.publicBundle(seasonId)) : read.bundle(seasonId);
+        return ResponseEntity.ok().cacheControl(CacheControl.noCache()).body(body);
+    }
+
+    /** O'yin qaysi mavsumga tegishli (eski mavsum o'yiniga havola ochilganda) */
+    @GetMapping("/matches/{matchId}/season")
+    public MatchSeason matchSeason(@PathVariable UUID matchId) {
+        return read.matchSeason(matchId, !CurrentUser.anonymous());
     }
 
     @GetMapping("/archive")

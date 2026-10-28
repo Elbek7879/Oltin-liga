@@ -2,11 +2,16 @@ package uz.payariq.liga.service;
 
 import java.time.Clock;
 import java.time.Duration;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Deque;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +47,20 @@ public class LiveMatchService {
     private final AuditService audit;
     private final Clock clock;
     private final ApplicationEventPublisher publisher;
+
+    /**
+     * Botda kiritilgan hodisalar tartibi (o'yin bo'yicha): «bekor qilish» eng oxirgi kiritilganini o'chiradi,
+     * daqiqasi eng kattasini emas — qo'shimcha vaqtda daqiqa qayta 41' dan boshlanadi.
+     */
+    private record Added(EventType type, UUID seasonTeamId, UUID playerId, int minute, boolean extraTime) {
+        boolean sameAs(MatchEvent e) {
+            return e.type == type && Objects.equals(e.seasonTeamId, seasonTeamId) && Objects.equals(e.playerId, playerId)
+                    && e.minute != null && e.minute == minute;
+        }
+    }
+
+    private static final int MAX_REMEMBERED = 100;
+    private final Map<UUID, Deque<Added>> added = new ConcurrentHashMap<>();
 
     public LiveMatchService(MatchRepository matches, MatchEventRepository events, SeasonRepository seasons, ResultService results,
                             SeasonDataLoader loader, AuditService audit, Clock clock, ApplicationEventPublisher publisher) {
@@ -189,6 +208,7 @@ public class LiveMatchService {
         Integer he = extra ? Integer.valueOf(n(m.homeExtra) + (home ? 1 : 0)) : m.homeExtra;
         Integer ae = extra ? Integer.valueOf(n(m.awayExtra) + (home ? 0 : 1)) : m.awayExtra;
         save(m, MatchStatus.LIVE, hs, as, he, ae, m.homePens, m.awayPens, minute, list);
+        remember(matchId, new Added(kind, eventTeam, playerId, minute, extra));
         return m;
     }
 
@@ -206,15 +226,24 @@ public class LiveMatchService {
         int minute = currentMinute(m);
         list.add(new ResultEvent(type, team, playerId, null, minute));
         save(m, MatchStatus.LIVE, m.homeScore, m.awayScore, m.homeExtra, m.awayExtra, m.homePens, m.awayPens, minute, list);
+        remember(matchId, new Added(type, team, playerId, minute, m.livePeriod == LivePeriod.EXTRA_TIME));
         return type;
     }
 
-    /** Oxirgi (vaqt bo'yicha eng keyingi) hodisani bekor qiladi; gol bo'lsa hisob ham kamayadi */
+    /** «Bekor qilish» tugmasi bosilsa o'chadigan hodisa (tasdiqlash oynasida ko'rsatiladi) */
+    @Transactional(readOnly = true)
+    public Optional<MatchEvent> undoCandidate(UUID matchId) {
+        List<MatchEvent> line = timeline(matchId);
+        return line.isEmpty() ? Optional.empty() : Optional.of(undoTarget(matchId, line).event());
+    }
+
+    /** Oxirgi kiritilgan hodisani bekor qiladi; gol bo'lsa hisob ham kamayadi */
     public MatchEvent undoLast(UUID matchId) {
         Match m = requireLive(matchId);
         List<MatchEvent> line = timeline(matchId);
         if (line.isEmpty()) throw ApiException.conflict("Bekor qiladigan hodisa yo‘q.");
-        MatchEvent last = line.get(line.size() - 1);
+        UndoTarget target = undoTarget(matchId, line);
+        MatchEvent last = target.event();
         List<ResultEvent> list = new ArrayList<>(line.stream().filter(e -> e != last).map(LiveMatchService::toInput).toList());
         int hs = n(m.homeScore);
         int as = n(m.awayScore);
@@ -223,8 +252,11 @@ public class LiveMatchService {
         boolean goal = last.type.isScoredGoal() || last.type == EventType.OWN_GOAL;
         if (goal) {
             boolean forHome = last.type == EventType.OWN_GOAL ? m.awayId.equals(last.seasonTeamId) : m.homeId.equals(last.seasonTeamId);
-            // Qo'shimcha vaqt boshlangan bo'lsa va gol asosiy vaqtdan keyin urilgan bo'lsa — qo'shimcha vaqt hisobidan
-            boolean extraGoal = he != null && last.minute != null && last.minute > 2 * halfMinutes(m) && (forHome ? n(he) : n(ae)) > 0;
+            // Gol qo'shimcha vaqtda kiritilgan bo'lsa — qo'shimcha vaqt hisobidan. Botda kiritilgani aniq ma'lum,
+            // saytda kiritilganida esa daqiqaga qarab taxmin qilinadi
+            boolean extraGoal = he != null && (forHome ? n(he) : n(ae)) > 0 && (target.added() != null
+                    ? target.added().extraTime()
+                    : last.minute != null && last.minute > 2 * halfMinutes(m));
             if (extraGoal) {
                 if (forHome) he = n(he) - 1;
                 else ae = n(ae) - 1;
@@ -235,6 +267,7 @@ public class LiveMatchService {
             }
         }
         save(m, MatchStatus.LIVE, hs, as, he, ae, m.homePens, m.awayPens, currentMinute(m), list);
+        if (target.added() != null) forget(matchId, target.added());
         return last;
     }
 
@@ -245,8 +278,45 @@ public class LiveMatchService {
         save(m, MatchStatus.FINISHED, n(m.homeScore), n(m.awayScore), m.homeExtra, m.awayExtra, m.homePens, m.awayPens, null, current(m));
         m.livePeriod = null;
         m.periodStartedAt = null;
+        added.remove(matchId);
         changed(m);
         return m;
+    }
+
+    // ---------- Bekor qilish uchun hodisalar tartibi ----------
+
+    private record UndoTarget(MatchEvent event, Added added) {
+    }
+
+    /** Bekor qilinadigan hodisa: botda eng oxirgi kiritilgani (hali o'chirilmagan bo'lsa), aks holda daqiqasi eng kattasi */
+    private UndoTarget undoTarget(UUID matchId, List<MatchEvent> line) {
+        Deque<Added> stack = added.get(matchId);
+        if (stack != null) {
+            synchronized (stack) {
+                for (Added a : stack) {
+                    for (int i = line.size() - 1; i >= 0; i--) {
+                        if (a.sameAs(line.get(i))) return new UndoTarget(line.get(i), a);
+                    }
+                }
+            }
+        }
+        return new UndoTarget(line.get(line.size() - 1), null);
+    }
+
+    private void remember(UUID matchId, Added a) {
+        Deque<Added> stack = added.computeIfAbsent(matchId, k -> new ArrayDeque<>());
+        synchronized (stack) {
+            stack.addFirst(a);
+            while (stack.size() > MAX_REMEMBERED) stack.removeLast();
+        }
+    }
+
+    private void forget(UUID matchId, Added a) {
+        Deque<Added> stack = added.get(matchId);
+        if (stack == null) return;
+        synchronized (stack) {
+            stack.removeFirstOccurrence(a);
+        }
     }
 
     // ---------- Yordamchilar ----------
@@ -266,7 +336,7 @@ public class LiveMatchService {
     }
 
     private void save(Match m, MatchStatus status, Integer hs, Integer as, Integer he, Integer ae, Integer hp, Integer ap, Integer minute, List<ResultEvent> list) {
-        results.save(m.getId(), new ResultInput(status, hs, as, he, ae, hp, ap, null, minute, list, null));
+        results.save(m.getId(), new ResultInput(status, hs, as, he, ae, hp, ap, null, minute, list, null, null));
     }
 
     /** Bo'lim o'zgardi — saytdagi daqiqa va holat yangilanadi */

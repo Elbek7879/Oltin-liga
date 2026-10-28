@@ -83,14 +83,16 @@ export function ScriptToggle({ className }: { className?: string }) {
 
 /** compact: 1024–1279px kenglikda faqat yil ko'rsatiladi */
 export function SeasonSelect({ className, tone = "band", compact = false }: { className?: string; tone?: "band" | "plain"; compact?: boolean }) {
-  const { seasons, season, seasonId, setSeasonId } = useSeason()
+  const { seasons, season, seasonId, setSeasonId, isLoading } = useSeason()
+  // Ro'yxat yuklanguncha joy band qilinadi — tugma keyin paydo bo'lib, yonidagilarni surib yubormasin (CLS)
+  if (isLoading) return <span aria-hidden="true" className={cn("block h-11 w-20 md:h-9 sm:w-40", compact && "lg:max-xl:w-20")} />
   if (seasons.length === 0) return null
   return (
-    <Select value={seasonId} onValueChange={setSeasonId}>
+    <Select value={seasonId} onValueChange={(id) => setSeasonId(id)}>
       <SelectTrigger
         aria-label="Mavsumni tanlash"
         className={cn(
-          "h-9! min-w-0 gap-1 rounded-full px-3 text-sm md:h-9!",
+          "h-11! min-w-0 gap-1 rounded-full px-3 text-sm md:h-9!",
           tone === "band" && "border-white/25 bg-white/5 text-band-foreground hover:bg-white/10 dark:bg-white/5 [&_svg]:text-band-muted!",
           className,
         )}

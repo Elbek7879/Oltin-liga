@@ -6,9 +6,12 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import uz.payariq.liga.domain.ApplicationStatus;
 import uz.payariq.liga.domain.AwardType;
 import uz.payariq.liga.domain.DecidedBy;
 import uz.payariq.liga.domain.EventType;
+import uz.payariq.liga.domain.FeedbackKind;
+import uz.payariq.liga.domain.FeedbackStatus;
 import uz.payariq.liga.domain.LivePeriod;
 import uz.payariq.liga.domain.MatchStage;
 import uz.payariq.liga.domain.MatchStatus;
@@ -23,6 +26,8 @@ import uz.payariq.liga.domain.StandingsCalculator.StandingRow;
 import uz.payariq.liga.domain.Tiebreaker;
 import uz.payariq.liga.model.AppUser;
 import uz.payariq.liga.model.Appearance;
+import uz.payariq.liga.model.ApplicationPlayer;
+import uz.payariq.liga.model.FeedbackMessage;
 import uz.payariq.liga.model.LeagueGroup;
 import uz.payariq.liga.model.LeagueSettings;
 import uz.payariq.liga.model.Match;
@@ -34,6 +39,7 @@ import uz.payariq.liga.model.Season;
 import uz.payariq.liga.model.SeasonAward;
 import uz.payariq.liga.model.Sponsor;
 import uz.payariq.liga.model.Team;
+import uz.payariq.liga.model.TeamApplication;
 import uz.payariq.liga.model.TiebreakLot;
 import uz.payariq.liga.model.Venue;
 
@@ -115,14 +121,20 @@ public final class Dto {
             UUID homeId, UUID awayId, String homeLabel, String awayLabel, Instant kickoff, boolean timeConfirmed, UUID venueId, MatchStatus status,
             Integer homeScore, Integer awayScore, Integer homeExtra, Integer awayExtra, Integer homePens, Integer awayPens,
             DecidedBy decidedBy, UUID winnerId, UUID nextMatchId, String nextSlot, UUID loserNextMatchId, String loserNextSlot,
-            String referee, Integer liveMinute, LivePeriod livePeriod, Instant periodStartedAt, String note) {
+            String referee, Integer liveMinute, LivePeriod livePeriod, Instant periodStartedAt, String note,
+            /* Natija formasi shu qiymatni qaytarib yuboradi: oraliqda boshqa joyda o'zgargan bo'lsa, saqlash rad etiladi */
+            Integer version) {
         public static MatchDto of(Match m) {
             return new MatchDto(m.getId(), m.seasonId, m.stage, m.groupId, m.round, m.playoffRound, m.bracketIndex,
                     m.homeId, m.awayId, m.homeLabel, m.awayLabel, m.kickoff, m.timeConfirmed, m.venueId, m.status,
                     m.homeScore, m.awayScore, m.homeExtra, m.awayExtra, m.homePens, m.awayPens,
                     m.decidedBy, m.winnerId, m.nextMatchId, m.nextSlot, m.loserNextMatchId, m.loserNextSlot,
-                    m.referee, m.liveMinute, m.livePeriod, m.periodStartedAt, m.note);
+                    m.referee, m.liveMinute, m.livePeriod, m.periodStartedAt, m.note, m.getVersion());
         }
+    }
+
+    /** O'yin qaysi mavsumga tegishli (eski mavsum o'yiniga havola ochilganda sayt shu mavsumga o'tadi) */
+    public record MatchSeason(UUID seasonId) {
     }
 
     public record MatchEventDto(UUID id, UUID matchId, EventType type, Integer minute, UUID playerId, UUID seasonTeamId, UUID assistId) {
@@ -304,5 +316,38 @@ public final class Dto {
         public static UserDto of(AppUser u) {
             return new UserDto(u.getId(), u.username, u.displayName, u.role, u.enabled, u.lastLoginAt, u.getCreatedAt());
         }
+    }
+
+    // ---------- Arizalar va murojaatlar (faqat admin panelda) ----------
+
+    public record ApplicationPlayerDto(String firstName, String lastName, Integer birthYear, Position position) {
+        public static ApplicationPlayerDto of(ApplicationPlayer p) {
+            return new ApplicationPlayerDto(p.firstName, p.lastName, p.birthYear, p.position);
+        }
+    }
+
+    public record TeamApplicationDto(UUID id, String teamName, String village, String logoUrl, String contactPhone, ApplicationStatus status,
+                                     Instant createdAt, Instant decidedAt, String decidedBy, UUID seasonId, String seasonName, UUID teamId,
+                                     /* Shu nomli jamoa ro'yxatda bor: qabul qilinsa, yangi jamoa ochilmaydi — o'sha jamoa mavsumga qo'shiladi */
+                                     boolean existingTeam,
+                                     List<ApplicationPlayerDto> players) {
+        public static TeamApplicationDto of(TeamApplication a, String seasonName, boolean existingTeam) {
+            return new TeamApplicationDto(a.getId(), a.teamName, a.village, a.logoUrl, a.contactPhone, a.status, a.getCreatedAt(), a.decidedAt,
+                    a.decidedBy, a.seasonId, seasonName, a.teamId, existingTeam, a.players.stream().map(ApplicationPlayerDto::of).toList());
+        }
+    }
+
+    /** Qabul natijasi: returning — oldingi mavsumlardan tanilgan (statistikasi davom etadigan) futbolchilar */
+    public record AcceptedApplication(String teamName, String seasonName, int players, int returning, boolean existingTeam) {
+    }
+
+    public record FeedbackDto(UUID id, FeedbackKind kind, String body, String authorName, String phone, FeedbackStatus status, Instant createdAt) {
+        public static FeedbackDto of(FeedbackMessage m) {
+            return new FeedbackDto(m.getId(), m.kind, m.body, m.authorName, m.phone, m.status, m.getCreatedAt());
+        }
+    }
+
+    /** Ko'rib chiqilmagan arizalar va o'qilmagan murojaatlar soni (menyudagi belgi uchun) */
+    public record ApplicationCounts(long teams, long messages) {
     }
 }

@@ -7,16 +7,21 @@ sizning-domen.uz {
 	}
 
 	# Jonli yangilanishlar oqimi (gollar saytda darhol ko'rinishi uchun): siqilmaydi, kutmasdan uzatiladi
+	# «header_up -Forwarded»: mijoz yuborgan Forwarded sarlavhasi ilovaga o'tmaydi. Aks holda uni har safar
+	# almashtirib, login urinishlari chegarasini aylanib o'tish mumkin (X-Forwarded-For'ni Caddy o'zi qayta yozadi).
 	@live path /api/public/live
 	handle @live {
 		reverse_proxy 127.0.0.1:8080 {
+			header_up -Forwarded
 			flush_interval -1
 		}
 	}
 
 	handle {
 		encode zstd gzip
-		reverse_proxy 127.0.0.1:8080
+		reverse_proxy 127.0.0.1:8080 {
+			header_up -Forwarded
+		}
 	}
 }
 

@@ -35,11 +35,16 @@ export function computeSuspensions(matches: Match[], events: MatchEvent[]): Susp
   const yellows = new Map<ID, number>()
   const result: Suspension[] = []
 
-  // Keyingi o'yin tur/bosqich tartibida olinadi — sanasi hali belgilanmagan o'yin ham hisobga kiradi
-  const nextMatchOf = (teamId: ID, after: Match) =>
-    matches
-      .filter((m) => m.id !== after.id && (m.homeId === teamId || m.awayId === teamId) && compareMatchOrder(m, after) > 0 && m.status !== "CANCELLED" && m.status !== "POSTPONED")
-      .sort(compareMatchOrder)[0]
+  // Keyingi o'yin tur/bosqich tartibida olinadi — sanasi hali belgilanmagan o'yin ham hisobga kiradi.
+  // Jamoa kartochkadan keyin allaqachon o'ynagan bo'lsa, jazo o'sha (birinchi o'ynalgan) o'yinda o'talgan:
+  // keyinroq qayta belgilangan qoldirilgan o'yin jazoni o'ziga «ko'chirib» olmaydi.
+  const nextMatchOf = (teamId: ID, after: Match) => {
+    const later = matches.filter(
+      (m) => m.id !== after.id && (m.homeId === teamId || m.awayId === teamId) && compareMatchOrder(m, after) > 0 && m.status !== "CANCELLED" && m.status !== "POSTPONED",
+    )
+    const playedAfter = later.filter((m) => m.status === "FINISHED" && m.kickoff > after.kickoff).sort((a, b) => a.kickoff.localeCompare(b.kickoff))[0]
+    return playedAfter ?? later.sort(compareMatchOrder)[0]
+  }
 
   for (const m of finished) {
     const cards = (byMatch.get(m.id) ?? []).filter((e) => e.playerId && (e.type === "YELLOW" || e.type === "SECOND_YELLOW" || e.type === "RED"))

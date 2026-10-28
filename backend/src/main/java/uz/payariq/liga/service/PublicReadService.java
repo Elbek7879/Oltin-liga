@@ -50,6 +50,7 @@ import uz.payariq.liga.web.Dto.HeadToHead;
 import uz.payariq.liga.web.Dto.LotDto;
 import uz.payariq.liga.web.Dto.MatchDto;
 import uz.payariq.liga.web.Dto.MatchEventDto;
+import uz.payariq.liga.web.Dto.MatchSeason;
 import uz.payariq.liga.web.Dto.NewsDto;
 import uz.payariq.liga.web.Dto.PlayerProfile;
 import uz.payariq.liga.web.Dto.PlayerSeasonRecord;
@@ -122,6 +123,21 @@ public class PublicReadService {
 
     private Set<UUID> testSeasonIds() {
         return seasons.findByTestTrue().stream().map(Season::getId).collect(Collectors.toSet());
+    }
+
+    /** Muxlislar uchun mavsum ma'lumotlari: sinov mavsumi yashirin (uni faqat tashkilotchilar ko'radi) */
+    public SeasonBundle publicBundle(UUID seasonId) {
+        Season s = seasons.findById(seasonId).orElseThrow(() -> ApiException.notFound("Mavsum topilmadi."));
+        if (s.test) throw ApiException.notFound("Mavsum topilmadi.");
+        return bundle(seasonId);
+    }
+
+    /** O'yin qaysi mavsumga tegishli — boshqa mavsum o'yiniga havola ochilganda sayt shu mavsumga o'tadi */
+    public MatchSeason matchSeason(UUID matchId, boolean includeTest) {
+        Match m = matches.findById(matchId).orElseThrow(() -> ApiException.notFound("O‘yin topilmadi."));
+        boolean hidden = seasons.findById(m.seasonId).map(s -> s.test).orElse(true);
+        if (hidden && !includeTest) throw ApiException.notFound("O‘yin topilmadi.");
+        return new MatchSeason(m.seasonId);
     }
 
     public SeasonBundle bundle(UUID seasonId) {

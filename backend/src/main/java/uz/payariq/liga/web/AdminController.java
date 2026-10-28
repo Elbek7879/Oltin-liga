@@ -187,7 +187,7 @@ public class AdminController {
 
     /** Natija kiritish — jadval va statistika shundan keyin avtomatik qayta hisoblanadi */
     @PutMapping("/matches/{matchId}/result")
-    public MatchDto saveResult(@PathVariable UUID matchId, @RequestBody ResultInput in) {
+    public MatchDto saveResult(@PathVariable UUID matchId, @Valid @RequestBody ResultInput in) {
         return results.save(matchId, in);
     }
 

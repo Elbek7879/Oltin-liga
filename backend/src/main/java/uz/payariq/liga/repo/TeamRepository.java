@@ -5,10 +5,7 @@ import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import uz.payariq.liga.model.Team;
 
+/** Nom bo'yicha takrorlanishni tekshirish — TeamNames qoidasi bilan xizmat qatlamida */
 public interface TeamRepository extends JpaRepository<Team, UUID> {
-    boolean existsByNameIgnoreCase(String name);
-
-    boolean existsByNameIgnoreCaseAndIdNot(String name, UUID id);
-
     List<Team> findAllByOrderByNameAsc();
 }

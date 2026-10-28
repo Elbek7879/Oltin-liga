@@ -27,6 +27,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import uz.payariq.liga.domain.Role;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import uz.payariq.liga.domain.EventType;
 import uz.payariq.liga.domain.LivePeriod;
 import uz.payariq.liga.domain.MatchStatus;
 import uz.payariq.liga.model.AppUser;
@@ -224,7 +225,9 @@ class TelegramBotIntegrationTest extends IntegrationTestBase {
         // Oxirgi hodisani bekor qilish (tasdiq bilan)
         press(button("Bekor qilish"));
         press(button("Ha, bekor qilish"));
-        assertThat(events.findByMatchId(match().getId())).hasSize(2);
+        // Aynan oxirgi kiritilgan hodisa (ikkinchi sariq) o'chadi — hammasi bir daqiqada bo'lsa ham; gol joyida qoladi
+        assertThat(events.findByMatchId(match().getId())).hasSize(2).extracting(e -> e.type).containsExactlyInAnyOrder(EventType.GOAL, EventType.YELLOW);
+        assertThat(match().homeTotal() + match().awayTotal()).isEqualTo(1);
 
         // Tanaffus va 2-bo'lim
         press(button("Tanaffus"));

@@ -1,7 +1,7 @@
 import type { TeamView } from "@/api/types"
 import type { Match, MatchEvent } from "@/domain/types"
 import type { SeasonIndex } from "@/hooks/use-season-data"
-import { dateWords, formatDate, formatTime, slugify } from "./format"
+import { dateWords, formatDate, formatTime, localDateKey, slugify } from "./format"
 import { liveLabel } from "./live"
 import { scoreNote, sideName, stageLabel, totalScore, winnerSide } from "./match"
 import { toCyrillic } from "./translit"
@@ -159,7 +159,8 @@ export function matchCaption(d: MatchImageData) {
 
 export function matchImageFileName(match: Match, d: MatchImageData) {
   const kind = d.kind === "preview" ? "anons" : d.kind === "live" ? "hisob" : "natija"
-  return `payariq-${kind}-${slugify(d.home.name)}-${slugify(d.away.name)}-${match.kickoff.slice(0, 10)}.png`
+  // Sana Toshkent vaqti bilan (UTC bo'yicha olinsa, tungi o'yinda fayl nomi bir kun oldingi sanani ko'rsatadi)
+  return `payariq-${kind}-${slugify(d.home.name)}-${slugify(d.away.name)}-${localDateKey(match.kickoff)}.png`
 }
 
 /* ───────────────────────── Chizish ─────────────────────────
@@ -664,7 +665,7 @@ export async function renderMatchImage(d: MatchImageData): Promise<Blob> {
   const lines = Math.min(5, Math.max(d.home.scorers.length + d.home.reds.length, d.away.scorers.length + d.away.reds.length))
   const hasEvents = lines > 0
   // Uzun nom ikki qatorga bo'linsa, gol urganlar pastroqdan boshlanadi
-  const wraps = [d.home.name, d.away.name].some((n) => /s/.test(n.trim()) && fitText(ctx, n, NAME_W, 56, 44, 750) !== n)
+  const wraps = [d.home.name, d.away.name].some((n) => /\s/.test(n.trim()) && fitText(ctx, n, NAME_W, 56, 44, 750) !== n)
   const extra = wraps ? 44 : 0
   // Gol urganlar kam bo'lsa asosiy blok pastroqqa tushadi — sarlavha va chipta orasida markazda turadi
   const oy = hasEvents ? Math.max(0, (5 - lines) * 22 - extra) : 130 - extra / 2

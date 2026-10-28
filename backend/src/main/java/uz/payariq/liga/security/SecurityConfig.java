@@ -67,7 +67,12 @@ public class SecurityConfig {
                         .referrerPolicy(r -> r.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.SAME_ORIGIN)))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.GET, "/api/public/**", "/media/**", "/actuator/health").permitAll()
+                        // HEAD — GET bilan bir xil (monitoring xizmatlari saytni shu so'rov bilan tekshiradi); jonli oqimga kerak emas
+                        .requestMatchers(HttpMethod.HEAD, "/api/public/live").denyAll()
+                        .requestMatchers(HttpMethod.HEAD, "/api/public/**", "/media/**", "/actuator/health").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/public/visit").permitAll()
+                        // Saytdan ariza va murojaat yuborish (IP bo'yicha chegara va botlar uchun tuzoq — ApplicationService)
+                        .requestMatchers(HttpMethod.POST, "/api/public/applications/team", "/api/public/applications/feedback").permitAll()
                         .requestMatchers("/api/auth/password", "/api/auth/telegram", "/api/auth/telegram/**").authenticated()
                         .requestMatchers("/api/auth/**", "/error").permitAll()
                         // Faqat bosh tashkilotchi
@@ -76,13 +81,15 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/admin/matches/*/result").hasAnyRole("SUPER_ADMIN", "ADMIN", "RESULT_ENTRY")
                         // Muharrir: yangiliklar, homiylar va rasm yuklash
                         .requestMatchers("/api/admin/news/**", "/api/admin/sponsors/**", "/api/admin/media/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "EDITOR")
-                        // Tashrif statistikasi — bosh tashkilotchi va administrator
+                        // Tashrif statistikasi va arizalar (telefon raqamlari bor) — bosh tashkilotchi va administrator
                         .requestMatchers(HttpMethod.GET, "/api/admin/visits").hasAnyRole("SUPER_ADMIN", "ADMIN")
+                        .requestMatchers("/api/admin/applications/**").hasAnyRole("SUPER_ADMIN", "ADMIN")
                         // Boshqaruv panelini o'qish barcha adminlarga ruxsat
                         .requestMatchers(HttpMethod.GET, "/api/admin/**").hasAnyRole(ALL_ADMINS)
                         .requestMatchers("/api/admin/**").hasAnyRole("SUPER_ADMIN", "ADMIN")
                         // Sayt sahifalari va statik fayllar (production'da frontend shu serverdan tarqatiladi)
-                        .requestMatchers(req -> HttpMethod.GET.matches(req.getMethod()) && !req.getRequestURI().startsWith("/api/")).permitAll()
+                        .requestMatchers(req -> (HttpMethod.GET.matches(req.getMethod()) || HttpMethod.HEAD.matches(req.getMethod()))
+                                && !req.getRequestURI().startsWith("/api/")).permitAll()
                         .anyRequest().denyAll())
                 .exceptionHandling(e -> e
                         .authenticationEntryPoint((req, res, ex) -> writeError(res, HttpServletResponse.SC_UNAUTHORIZED, "Bu amal uchun tizimga kiring."))

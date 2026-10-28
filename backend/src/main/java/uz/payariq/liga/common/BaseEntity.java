@@ -44,6 +44,20 @@ public abstract class BaseEntity {
         return id;
     }
 
+    /** Yozuv versiyasi: har saqlashda oshadi (eskirgan formani aniqlash uchun) */
+    public Integer getVersion() {
+        return version;
+    }
+
+    /**
+     * Yozuvni o'zgargan deb belgilaydi — versiya albatta oshadi. Masalan, o'yinning faqat hodisalari
+     * (alohida jadval) o'zgarganda ham o'yin versiyasi yangilanishi kerak.
+     */
+    public void touch() {
+        Instant now = Instant.now();
+        updatedAt = updatedAt != null && !now.isAfter(updatedAt) ? updatedAt.plusNanos(1000) : now;
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }

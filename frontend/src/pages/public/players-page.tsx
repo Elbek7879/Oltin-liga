@@ -58,7 +58,7 @@ export default function PlayersPage() {
         </div>
         <div className="grid grid-cols-2 gap-2 md:contents">
           <Select value={team} onValueChange={(v) => { setTeam(v); setLimit(PAGE) }}>
-            <SelectTrigger aria-label="Jamoa" className="w-full">
+            <SelectTrigger aria-label="Jamoa" className="w-full text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -69,7 +69,7 @@ export default function PlayersPage() {
             </SelectContent>
           </Select>
           <Select value={position} onValueChange={(v) => { setPosition(v as Position | "all"); setLimit(PAGE) }}>
-            <SelectTrigger aria-label="Pozitsiya" className="w-full">
+            <SelectTrigger aria-label="Pozitsiya" className="w-full text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

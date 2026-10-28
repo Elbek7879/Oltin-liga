@@ -126,7 +126,7 @@ export default function PlayoffPage() {
         </div>
       ) : desktop ? (
         <div className="panel p-4 md:p-5">
-          <Bracket matches={data.matches} index={index} linkable={!data.projected} />
+          <Bracket matches={data.matches} index={index} linkable={!data.projected} headingLevel={2} />
         </div>
       ) : (
         <MobileBracket matches={data.matches} index={index} linkable={!data.projected} />

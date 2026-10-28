@@ -70,14 +70,18 @@ public class PlayoffService {
 
     /**
      * Guruh bosqichi holatiga qarab setkani tuzadi, yangilaydi yoki olib tashlaydi.
-     * Guruh natijasi, nizom, ochko o'zgarishi yoki qur'adan keyin chaqiriladi. Pley-off boshlangan bo'lsa tegmaydi.
+     * Guruh natijasi, nizom, ochko o'zgarishi yoki qur'adan keyin chaqiriladi. Pley-off boshlangan bo'lsa setkaga
+     * tegilmaydi — juftliklarni o'zgartirib yuboradigan o'zgarish esa rad etiladi (jadval va setka bir-biriga zid bo'lmasin).
      */
     public void sync(UUID seasonId) {
         matches.flush();
         SeasonData d = loader.load(seasonId);
         if (d.season().isFinished()) return;
         List<Match> playoff = playoffMatches(d);
-        if (playoff.stream().anyMatch(Match::hasResult)) return;
+        if (playoff.stream().anyMatch(Match::hasResult)) {
+            requireSameSeeding(d, playoff);
+            return;
+        }
 
         Map<UUID, List<StandingRow>> standings = d.standings();
         Bracket.Plan plan = d.playoffPlan(standings);
@@ -242,6 +246,31 @@ public class PlayoffService {
 
     private static String key(Match m) {
         return m.playoffRound + ":" + m.bracketIndex;
+    }
+
+    /**
+     * Pley-off boshlangan: guruhdan joylashadigan jamoalar (saralash va birinchi bosqich) o'zgarmasligi shart.
+     * O'zgarsa — chaqirgan amal (natija, ochko yoki nizom) tranzaksiyasi bilan birga bekor qilinadi.
+     */
+    private static void requireSameSeeding(SeasonData d, List<Match> playoff) {
+        Map<UUID, List<StandingRow>> standings = d.standings();
+        Bracket.Plan plan = d.playoffPlan(standings);
+        boolean ready = d.groupStageComplete() && d.groupTies(standings).isEmpty() && plan.error() == null && plan.ties().isEmpty();
+        if (!ready || !sameSeeds(playoff, plan, d.season().thirdPlaceMatch)) {
+            throw ApiException.conflict("Pley-off allaqachon boshlangan — bu o‘zgarish pley-off juftliklarini o‘zgartirib yuboradi. Avval pley-off natijalarini bekor qiling.");
+        }
+    }
+
+    /** Yangi hisoblangan setkada guruhdan joylashgan har bir jamoa mavjud setkadagi o'z joyida turibdimi */
+    private static boolean sameSeeds(List<Match> playoff, Bracket.Plan plan, boolean thirdPlace) {
+        Map<String, Match> existing = playoff.stream().collect(Collectors.toMap(PlayoffService::key, m -> m));
+        for (Match m : Bracket.create(UUID.randomUUID(), plan, thirdPlace, null, (r, i) -> Instant.EPOCH)) {
+            Match old = existing.get(key(m));
+            if (old == null) return false;
+            if (m.homeId != null && !m.homeId.equals(old.homeId)) return false;
+            if (m.awayId != null && !m.awayId.equals(old.awayId)) return false;
+        }
+        return true;
     }
 
     /** Setkadagi jamoalar joylashuvi o'zgarmagan bo'lsa, qayta tuzish shart emas */

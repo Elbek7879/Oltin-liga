@@ -41,4 +41,16 @@ describe("diskvalifikatsiya", () => {
     ]
     expect(computeSuspensions(ms, [card("m1", "RED")])[0].banMatchId).toBe("m2")
   })
+
+  it("jazo o‘talgan o‘yindan keyin qayta belgilangan qoldirilgan o‘yin jazoni o‘ziga ko‘chirmaydi", () => {
+    // 2-tur qoldirildi, jamoa 3-turni o'ynab jazoni o'tadi; keyin 2-tur yangi sanaga qo'yiladi
+    const ms = [
+      { ...match("m1", 1), round: 1 },
+      { ...match("m2", 25, "SCHEDULED"), round: 2 },
+      { ...match("m3", 15), round: 3 },
+    ]
+    const s = computeSuspensions(ms, [card("m1", "RED")])
+    expect(s[0]).toMatchObject({ banMatchId: "m3", served: true })
+    expect(suspendedFor("m2", ms, [card("m1", "RED")])).toEqual([])
+  })
 })

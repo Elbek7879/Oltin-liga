@@ -63,6 +63,7 @@ public class SeoService {
         STATIC_PAGES.put("/liga-haqida", new String[] {"Liga haqida", "Liga qayerda o‘tadi, kimlar qatnashadi va qanday qatnashish mumkin."});
         STATIC_PAGES.put("/nizom", new String[] {"Musobaqa nizomi", "Musobaqa qoidalari: ochkolar, teng ochkoda tartib, pley-offga chiqish va intizom."});
         STATIC_PAGES.put("/maxfiylik", new String[] {"Maxfiylik siyosati", "Sayt qanday ma’lumotlarni saqlaydi, nima uchun va futbolchi o‘z ma’lumotini qanday tuzattirishi mumkin."});
+        STATIC_PAGES.put("/murojaat", new String[] {"Murojaat va arizalar", "Yangi mavsumga jamoa arizasi yuborish hamda liga uchun taklif va shikoyatlar."});
     }
 
     private static final Pattern TEAM = Pattern.compile("^/jamoalar/([0-9a-fA-F-]{36})$");

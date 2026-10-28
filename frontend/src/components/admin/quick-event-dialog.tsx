@@ -2,7 +2,7 @@ import { Ban, LoaderCircle, UserPlus } from "lucide-react"
 import { useEffect, useId, useState, type FormEvent } from "react"
 import { toast } from "sonner"
 import { api } from "@/api/client"
-import { useAdminMutation } from "@/api/hooks"
+import { useAdminMutation, useMe } from "@/api/hooks"
 import { CardIcon } from "@/components/league/icons"
 import { TeamCrest } from "@/components/league/team-crest"
 import { Button } from "@/components/ui/button"
@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label"
 import type { TeamView } from "@/api/types"
 import type { ID } from "@/domain/types"
 import type { SeasonIndex } from "@/hooks/use-season-data"
+import { canManageCompetition } from "@/lib/roles"
 import { cn } from "@/lib/utils"
 
 export type QuickGoalKind = "GOAL" | "PENALTY_GOAL" | "OWN_GOAL"
@@ -146,6 +147,9 @@ export function QuickEventDialog({
   const [goalKind, setGoalKind] = useState<QuickGoalKind>("GOAL")
   const [cardKind, setCardKind] = useState<QuickCardKind>("YELLOW")
   const [adding, setAdding] = useState(false)
+  // Futbolchi qo'shish huquqi faqat tashkilotchilarda (natija kirituvchida server 403 qaytaradi)
+  const { data: me } = useMe()
+  const canAddPlayer = canManageCompetition(me?.role)
   useEffect(() => {
     if (open) {
       setGoalKind("GOAL")
@@ -195,7 +199,10 @@ export function QuickEventDialog({
 
         {list.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
-            {listTeam.name} tarkibida futbolchi yo‘q. «Yangi futbolchi» tugmasi bilan shu yerning o‘zida qo‘shing{mode === "goal" ? " yoki «Muallif noma’lum»ni tanlang" : ""}.
+            {listTeam.name} tarkibida futbolchi yo‘q.{" "}
+            {canAddPlayer
+              ? `«Yangi futbolchi» tugmasi bilan shu yerning o‘zida qo‘shing${mode === "goal" ? " yoki «Muallif noma’lum»ni tanlang" : ""}.`
+              : `Futbolchini tashkilotchi qo‘shadi${mode === "goal" ? ". Hozircha «Muallif noma’lum»ni tanlang" : ""}.`}
           </p>
         ) : (
           <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2" aria-label={`${listTeam.name} o‘yinchilari`}>
@@ -228,7 +235,7 @@ export function QuickEventDialog({
             })}
           </ul>
         )}
-        {adding ? (
+        {adding && canAddPlayer ? (
           <NewPlayerForm
             key={listTeam.id}
             team={listTeam}
@@ -239,10 +246,12 @@ export function QuickEventDialog({
           />
         ) : (
           <div className="grid gap-2 sm:grid-cols-2">
-            <Button type="button" variant="outline" onClick={() => setAdding(true)}>
-              <UserPlus aria-hidden="true" />
-              Yangi futbolchi
-            </Button>
+            {canAddPlayer && (
+              <Button type="button" variant="outline" onClick={() => setAdding(true)}>
+                <UserPlus aria-hidden="true" />
+                Yangi futbolchi
+              </Button>
+            )}
             {mode === "goal" && (
               <Button type="button" variant="outline" onClick={() => pick(null)}>
                 Muallif noma’lum

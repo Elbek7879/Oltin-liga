@@ -7,6 +7,7 @@ import {
   ExternalLink,
   FlaskConical,
   Handshake,
+  Inbox,
   LayoutDashboard,
   Layers,
   Lock,
@@ -20,12 +21,14 @@ import {
   Trophy,
   UserRound,
 } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from "react-router"
 import { useQueryClient } from "@tanstack/react-query"
 import { api, IS_DEMO_MODE } from "@/api/client"
-import { useMe } from "@/api/hooks"
+import { useApplicationCounts, useMe } from "@/api/hooks"
 import type { AdminRole } from "@/api/types"
+import { CountBadge } from "@/components/admin/count-badge"
+import { ReloginDialog } from "@/components/admin/relogin-dialog"
 import { EmptyState, PageSkeleton } from "@/components/league/states"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
@@ -34,6 +37,7 @@ import { SeasonProvider, useSeason } from "@/hooks/use-season"
 import { useLiveUpdates } from "@/hooks/use-live-updates"
 import { canManageCompetition, canOpen, ROLE_LABELS } from "@/lib/roles"
 import { adminMeta } from "@/lib/seo"
+import { setSessionExpired, useSessionExpired } from "@/lib/session-expired"
 import { cn } from "@/lib/utils"
 import { LeagueMark, ScriptToggle, SeasonSelect, ThemeToggle } from "./brand"
 import { ScrollToTop } from "./scroll-to-top"
@@ -41,7 +45,10 @@ import { ScrollToTop } from "./scroll-to-top"
 const NAV_GROUPS = [
   {
     title: "Asosiy",
-    items: [{ to: "/admin", label: "Boshqaruv paneli", icon: LayoutDashboard, end: true }],
+    items: [
+      { to: "/admin", label: "Boshqaruv paneli", icon: LayoutDashboard, end: true },
+      { to: "/admin/arizalar", label: "Arizalar", icon: Inbox },
+    ],
   },
   {
     title: "Musobaqa",
@@ -101,7 +108,14 @@ function bottomFor(role: AdminRole) {
   return [BOTTOM[0], ...own].slice(0, 4)
 }
 
+/** Ko'rib chiqilmagan arizalar va o'qilmagan murojaatlar soni — faqat ularni ko'ra oladigan rollar uchun so'raladi */
+function useInboxCount(role: AdminRole | undefined) {
+  const { data } = useApplicationCounts(Boolean(role && canOpen(role, "/admin/arizalar")))
+  return data ? data.teams + data.messages : 0
+}
+
 function NavList({ onNavigate, tone, role }: { onNavigate?: () => void; tone: "band" | "plain"; role: AdminRole }) {
+  const inbox = useInboxCount(role)
   return (
     <nav aria-label="Boshqaruv menyusi" className="space-y-5">
       {navFor(role).map((g) => (
@@ -129,6 +143,7 @@ function NavList({ onNavigate, tone, role }: { onNavigate?: () => void; tone: "b
                 >
                   <item.icon className="size-[18px] shrink-0" aria-hidden="true" />
                   {item.label}
+                  {item.to === "/admin/arizalar" && <CountBadge count={inbox} className="ml-auto" />}
                 </NavLink>
               </li>
             ))}
@@ -212,7 +227,8 @@ function useLogout() {
   const navigate = useNavigate()
   const client = useQueryClient()
   return async () => {
-    await api.logout()
+    // Sessiya allaqachon tugagan bo'lsa ham chiqish to'xtab qolmasin
+    await api.logout().catch(() => undefined)
     // Avval kirish sahifasiga o'tiladi (aks holda panel «keyin» bilan yo'naltiradi), so'ng oldingi foydalanuvchi ma'lumotlari tozalanadi
     navigate("/admin/kirish", { replace: true })
     client.removeQueries({ queryKey: ["admin"] })
@@ -255,7 +271,13 @@ function AdminLayoutInner() {
   const needsSeason = !seasonsLoading && seasons.length === 0 && !WITHOUT_SEASON.some((p) => location.pathname.startsWith(p))
   const [menuOpen, setMenuOpen] = useState(false)
   const logout = useLogout()
+  const sessionExpired = useSessionExpired()
+  const inbox = useInboxCount(me?.role)
   useLeagueMeta((league) => adminMeta(sectionLabel(location.pathname), league))
+  // Chiqilgan bo'lsa, «qayta kiring» oynasi keyingi kirishda qayta ochilmasin
+  useEffect(() => {
+    if (!me) setSessionExpired(false)
+  }, [me])
 
   if (isLoading) return <PageSkeleton />
   if (!me) return <Navigate to={`/admin/kirish?keyin=${encodeURIComponent(location.pathname)}`} replace />
@@ -265,20 +287,34 @@ function AdminLayoutInner() {
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[16rem_minmax(0,1fr)] lg:bg-band">
       <ScrollToTop />
+      {sessionExpired && (
+        <ReloginDialog
+          me={me}
+          onLogout={() => {
+            setSessionExpired(false)
+            void logout()
+          }}
+        />
+      )}
       <a href="#admin-main" className="sr-only z-50 rounded-md bg-card px-4 py-2 font-semibold focus:not-sr-only focus:fixed focus:top-2 focus:left-2">
         Asosiy mazmunga o‘tish
       </a>
 
-      <aside className="no-print sticky top-0 hidden h-dvh flex-col overflow-y-auto bg-band px-3 py-4 text-band-foreground lg:flex">
-        <Link to="/admin" className="mb-6 flex items-center gap-2.5 px-2">
-          <LeagueMark className="size-11" />
-          <span className="leading-tight">
-            <span className="block font-display text-lg text-gold-400">Oltin Liga</span>
-            <span className="block text-xs text-band-muted">Boshqaruv paneli</span>
-          </span>
-        </Link>
-        <NavList tone="band" role={me.role} />
-        <div className="mt-auto space-y-1 border-t border-white/10 pt-4">
+      {/* Logotip va pastdagi akkaunt joyida turadi — bo'limlar ekranga sig'masa, faqat ular orasidagi ro'yxat aylanadi */}
+      <aside className="no-print sticky top-0 hidden h-dvh flex-col bg-band text-band-foreground lg:flex">
+        <div className="shrink-0 border-b border-white/10 px-3 pt-4 pb-3">
+          <Link to="/admin" className="flex items-center gap-2.5 rounded-lg px-2">
+            <LeagueMark className="size-11" />
+            <span className="leading-tight">
+              <span className="block font-display text-lg text-gold-400">Oltin Liga</span>
+              <span className="block text-xs text-band-muted">Boshqaruv paneli</span>
+            </span>
+          </Link>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 [scrollbar-color:rgb(255_255_255/0.25)_transparent] [scrollbar-width:thin]">
+          <NavList tone="band" role={me.role} />
+        </div>
+        <div className="shrink-0 space-y-1 border-t border-white/10 px-3 pt-3 pb-4">
           <AccountLink name={me.displayName} role={me.role} tone="band" />
           <button
             type="button"
@@ -359,7 +395,11 @@ function AdminLayoutInner() {
               aria-haspopup="dialog"
               className="flex h-14 w-full flex-col items-center justify-center gap-0.5 text-2xs font-medium text-muted-foreground"
             >
-              <Menu className="size-5" aria-hidden="true" />
+              <span className="relative">
+                <Menu className="size-5" aria-hidden="true" />
+                {/* Yangi arizalar menyu ichida — belgi shu yerda ham ko'rinadi */}
+                <CountBadge count={inbox} className="absolute -top-2 left-3 h-4 min-w-4 px-1 text-[10px]" />
+              </span>
               Menyu
             </button>
           </li>
@@ -367,14 +407,15 @@ function AdminLayoutInner() {
       </nav>
 
       <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-        <SheetContent side="left" className="w-[18rem] overflow-y-auto p-0">
-          <SheetHeader className="border-b border-border">
+        <SheetContent side="left" className="w-[18rem] gap-0 p-0">
+          {/* Sarlavha joyida turadi, bo'limlar ro'yxati uning ostida aylanadi */}
+          <SheetHeader className="shrink-0 border-b border-border">
             <SheetTitle className="font-display text-xl">Boshqaruv paneli</SheetTitle>
             <SheetDescription>
               {me.displayName}, {ROLE_LABELS[me.role].toLowerCase()}
             </SheetDescription>
           </SheetHeader>
-          <div className="p-3">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">
             <NavList tone="plain" role={me.role} onNavigate={() => setMenuOpen(false)} />
             <div className="mt-5 space-y-1 border-t border-border pt-4">
               <AccountLink name={me.displayName} role={me.role} tone="plain" onNavigate={() => setMenuOpen(false)} />

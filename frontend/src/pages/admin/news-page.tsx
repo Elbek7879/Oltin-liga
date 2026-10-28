@@ -19,7 +19,7 @@ import { formatDateTime } from "@/lib/format"
 const schema = z.object({
   title: z.string().trim().min(5, "Sarlavha kamida 5 ta belgi").max(120, "Sarlavha juda uzun"),
   excerpt: z.string().trim().min(10, "Qisqa tavsif yozing (kamida 10 ta belgi)").max(240, "240 ta belgidan oshmasin"),
-  body: z.string().trim().min(20, "Yangilik matnini yozing"),
+  body: z.string().trim().min(20, "Yangilik matnini yozing (kamida 20 ta belgi)").max(20000, "Matn juda uzun — 20 000 ta belgidan oshmasin"),
   important: z.boolean(),
 })
 type Values = z.infer<typeof schema>
@@ -32,7 +32,11 @@ function NewsDialog({ open, onOpenChange, item }: { open: boolean; onOpenChange:
     if (open) form.reset(defaults())
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, item?.id])
-  const { errors } = form.formState
+  const { errors, isDirty } = form.formState
+  // Yozilgan matn tasodifan (oyna tashqarisini bosish yoki Esc) yo'qolmasin; × tugmasi bilan esa yopiladi
+  const keepOpenIfDirty = (e: Event) => {
+    if (isDirty) e.preventDefault()
+  }
 
   const submit = (status: News["status"]) =>
     form.handleSubmit(async (v) => {
@@ -42,7 +46,7 @@ function NewsDialog({ open, onOpenChange, item }: { open: boolean; onOpenChange:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-2xl" onInteractOutside={keepOpenIfDirty} onEscapeKeyDown={keepOpenIfDirty}>
         <DialogHeader>
           <DialogTitle className="font-display text-xl">{item ? "Yangilikni tahrirlash" : "Yangi yangilik"}</DialogTitle>
           <DialogDescription>«Muhim e’lon» belgilansa, yangilik bosh sahifaning yuqorisida ko‘rinadi.</DialogDescription>
@@ -54,7 +58,13 @@ function NewsDialog({ open, onOpenChange, item }: { open: boolean; onOpenChange:
           <Field label="Qisqa tavsif" htmlFor="n-excerpt" error={errors.excerpt?.message} hint="Ro‘yxatda sarlavha ostida ko‘rinadi" required>
             <Textarea id="n-excerpt" rows={2} {...form.register("excerpt")} />
           </Field>
-          <Field label="Matn" htmlFor="n-body" error={errors.body?.message} hint="Xatboshilarni bo‘sh qator bilan ajrating" required>
+          <Field
+            label="Matn"
+            htmlFor="n-body"
+            error={errors.body?.message}
+            hint="Xatboshilarni bo‘sh qator bilan ajrating. «## Sarlavha», «- band» (ro‘yxat), «**qalin**»; https:// bilan boshlangan havola o‘zi bosiladigan bo‘ladi"
+            required
+          >
             <Textarea id="n-body" rows={8} {...form.register("body")} />
           </Field>
           <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-semibold">

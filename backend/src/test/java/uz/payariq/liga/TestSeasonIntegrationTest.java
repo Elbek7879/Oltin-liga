@@ -115,6 +115,11 @@ class TestSeasonIntegrationTest extends IntegrationTestBase {
         // Futbolchi profili ham yashirin
         String player = getJson("/api/public/seasons/" + testId + "/bundle").get("rosters").get(0).get("playerId").asText();
         perform(get("/api/public/players/" + player + "/profile"), null, null).andExpect(status().isNotFound());
+        // Mavsum ma'lumotlari va o'yin havolasi ham muxlislarga yopiq, tashkilotchiga ochiq
+        perform(get("/api/public/seasons/" + testId + "/bundle"), null, null).andExpect(status().isNotFound());
+        String testMatch = getJson("/api/public/seasons/" + testId + "/bundle").get("matches").get(0).get("id").asText();
+        perform(get("/api/public/matches/" + testMatch + "/season"), null, null).andExpect(status().isNotFound());
+        perform(get("/api/public/matches/" + testMatch + "/season"), null, asAdmin()).andExpect(status().isOk());
 
         // Haqiqiy mavsum ochiladi; sinov boshlangan ekan, uni boshlashdan oldin o'chirish so'raladi
         String realId = createSeason("1-mavsum", false);

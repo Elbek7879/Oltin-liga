@@ -31,6 +31,8 @@ public class VisitController {
         // Tizimga kirgan tashkilotchining o'zi saytni ko'rsa, sanalmaydi
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.isAuthenticated() && !(auth instanceof AnonymousAuthenticationToken)) return;
+        // Bitta manzildan juda ko'p so'rov — statistikani sun'iy oshirishga urinish, sanalmaydi
+        if (!visits.allow(request.getRemoteAddr())) return;
         visits.record(in, request.getHeader(HttpHeaders.USER_AGENT), request.getServerName());
     }
 

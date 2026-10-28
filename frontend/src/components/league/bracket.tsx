@@ -201,7 +201,9 @@ function SideColumn({ list, side, depth, last, index, linkable, height }: { list
  * G'olib o'tgan yo'l oltin chiziq bilan, «Mening jamoam» yulduzcha bilan belgilanadi.
  * Saralash o'yinlari setka ustida alohida qatorda.
  */
-export function Bracket({ matches, index, linkable = true }: { matches: Match[]; index: SeasonIndex; linkable?: boolean }) {
+/** headingLevel: bosqich sarlavhalari darajasi — sahifada ulardan oldin h2 bo'lmasa, 2 beriladi (h1 → h3 sakramasin) */
+export function Bracket({ matches, index, linkable = true, headingLevel = 3 }: { matches: Match[]; index: SeasonIndex; linkable?: boolean; headingLevel?: 2 | 3 }) {
+  const RoundHeading = headingLevel === 2 ? "h2" : "h3"
   const playInRound = playoffRounds(matches).find((r) => isPlayInRound(r, matches))
   const rounds = playoffRounds(matches).filter((r) => r !== playInRound)
   const sideRounds = rounds.filter((r) => r !== "F")
@@ -231,7 +233,7 @@ export function Bracket({ matches, index, linkable = true }: { matches: Match[];
       <ChampionBanner matches={matches} index={index} />
       {playIns.length > 0 && (
         <section className="mb-6 rounded-2xl border border-dashed border-border p-4" aria-label="Saralash o‘yinlari">
-          <h3 className="text-sm font-semibold">{roundLabel(playInRound!, matches)}</h3>
+          <RoundHeading className="text-sm font-semibold">{roundLabel(playInRound!, matches)}</RoundHeading>
           <p className="mb-3 text-xs text-muted-foreground">
             G‘oliblar {sideRounds[0] ? ROUND_LABELS[sideRounds[0]].toLowerCase() : "keyingi bosqich"}dagi bo‘sh joylarni egallaydi.
           </p>
@@ -247,9 +249,9 @@ export function Bracket({ matches, index, linkable = true }: { matches: Match[];
       <div className="overflow-x-auto overscroll-x-contain pb-2">
         <div className="grid justify-center gap-x-5" style={template}>
           {columns.map((c) => (
-            <h3 key={c.key} className={cn("mb-2 text-center text-xs font-semibold text-muted-foreground", c.side === "C" && "text-gold-text")}>
+            <RoundHeading key={c.key} className={cn("mb-2 text-center text-xs font-semibold text-muted-foreground", c.side === "C" && "text-gold-text")}>
               {c.label}
-            </h3>
+            </RoundHeading>
           ))}
           {columns.map((c) =>
             c.side === "C" ? (

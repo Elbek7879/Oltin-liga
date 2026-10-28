@@ -460,12 +460,12 @@ public class BotUpdateHandler {
     }
 
     private void showUndoConfirm(long chatId, long msgId, Match m) {
-        List<MatchEvent> line = live.timeline(m.getId());
-        if (line.isEmpty()) {
+        // Aynan «Ha» bosilganda o'chadigan hodisa ko'rsatiladi (botda eng oxirgi kiritilgani)
+        MatchEvent last = live.undoCandidate(m.getId()).orElse(null);
+        if (last == null) {
             showPanel(chatId, msgId, m);
             return;
         }
-        MatchEvent last = line.get(line.size() - 1);
         String base = enc(m.getId()) + "." + rev(m);
         Keyboard kb = new Keyboard().row(new Button("✅ Ha, bekor qilish", "uy." + base), new Button("⬅️ Yo‘q", "o." + enc(m.getId())));
         bot.edit(chatId, msgId, "Oxirgi hodisa bekor qilinsinmi?\n\n" + icon(last.type) + " " + (last.minute == null ? "" : last.minute + "′ ")

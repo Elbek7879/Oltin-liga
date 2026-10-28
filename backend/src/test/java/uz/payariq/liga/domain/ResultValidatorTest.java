@@ -30,7 +30,7 @@ class ResultValidatorTest {
     }
 
     private ResultInput finished(int hs, int as, List<ResultEvent> events) {
-        return new ResultInput(MatchStatus.FINISHED, hs, as, null, null, null, null, null, null, events, null);
+        return new ResultInput(MatchStatus.FINISHED, hs, as, null, null, null, null, null, null, events, null, null);
     }
 
     private ResultValidator.ValidationResult validate(Match m, ResultInput in) {
@@ -73,7 +73,7 @@ class ResultValidatorTest {
     @Test
     @DisplayName("rejalashtirilgan o'yinga gol kiritib bo'lmaydi")
     void scheduledWithEvents() {
-        var in = new ResultInput(MatchStatus.SCHEDULED, null, null, null, null, null, null, null, null, List.of(goal(home, h1)), null);
+        var in = new ResultInput(MatchStatus.SCHEDULED, null, null, null, null, null, null, null, null, List.of(goal(home, h1)), null, null);
         assertThat(validate(match(MatchStage.GROUP), in).errors()).hasSize(1);
     }
 
@@ -82,9 +82,9 @@ class ResultValidatorTest {
     void playoffTie() {
         Match m = match(MatchStage.PLAYOFF);
         assertThat(validate(m, finished(1, 1, List.of(goal(home, h1), goal(away, a1)))).errors().get(0)).contains("Qo‘shimcha vaqt");
-        var equalPens = new ResultInput(MatchStatus.FINISHED, 0, 0, 0, 0, 3, 3, null, null, List.of(), null);
+        var equalPens = new ResultInput(MatchStatus.FINISHED, 0, 0, 0, 0, 3, 3, null, null, List.of(), null, null);
         assertThat(validate(m, equalPens).errors()).anyMatch(e -> e.contains("g‘olib bo‘lishi kerak"));
-        var ok = new ResultInput(MatchStatus.FINISHED, 0, 0, 0, 0, 4, 3, null, null, List.of(), null);
+        var ok = new ResultInput(MatchStatus.FINISHED, 0, 0, 0, 0, 4, 3, null, null, List.of(), null, null);
         assertThat(validate(m, ok).errors()).isEmpty();
         assertThat(ResultValidator.deriveOutcome(m, ok).decidedBy()).isEqualTo(DecidedBy.PENALTIES);
         assertThat(ResultValidator.deriveOutcome(m, ok).winnerId()).isEqualTo(home);
@@ -101,7 +101,7 @@ class ResultValidatorTest {
     @Test
     @DisplayName("texnik mag'lubiyat 3:0 deb yoziladi")
     void forfeit() {
-        var in = new ResultInput(MatchStatus.FINISHED, null, null, null, null, null, null, "away", null, List.of(), null);
+        var in = new ResultInput(MatchStatus.FINISHED, null, null, null, null, null, null, "away", null, List.of(), null, null);
         var outcome = ResultValidator.deriveOutcome(match(MatchStage.GROUP), in);
         assertThat(outcome.homeScore()).isEqualTo(3);
         assertThat(outcome.awayScore()).isZero();
@@ -114,5 +114,19 @@ class ResultValidatorTest {
     void doubleRed() {
         var in = finished(0, 0, List.of(new ResultEvent(EventType.RED, home, h1, null, 10), new ResultEvent(EventType.RED, home, h1, null, 20)));
         assertThat(validate(match(MatchStage.GROUP), in).errors()).anyMatch(e -> e.contains("qizil kartochka"));
+    }
+
+    @Test
+    @DisplayName("texnik mag'lubiyatda kartochkalar saqlanadi va tekshiriladi, gollar e'tiborga olinmaydi")
+    void forfeitKeepsCards() {
+        var red = new ResultEvent(EventType.RED, away, a1, null, 30);
+        var goal = new ResultEvent(EventType.GOAL, home, h1, null, 10);
+        var ok = new ResultInput(MatchStatus.FINISHED, null, null, null, null, null, null, "away", null, List.of(goal, red), null, null);
+        assertThat(validate(match(MatchStage.GROUP), ok).errors()).isEmpty();
+        assertThat(ok.forfeitCards()).containsExactly(red);
+
+        var stranger = new ResultEvent(EventType.YELLOW, away, h1, null, 30);
+        var bad = new ResultInput(MatchStatus.FINISHED, null, null, null, null, null, null, "away", null, List.of(stranger), null, null);
+        assertThat(validate(match(MatchStage.GROUP), bad).errors()).anyMatch(e -> e.contains("tarkibida yo‘q"));
     }
 }

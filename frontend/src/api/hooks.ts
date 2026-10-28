@@ -27,6 +27,9 @@ export const qk = {
   visits: ["admin", "visits"] as const,
   venues: ["admin", "venues"] as const,
   users: ["admin", "users"] as const,
+  applicationCounts: ["admin", "application-counts"] as const,
+  teamApplications: ["admin", "team-applications"] as const,
+  feedback: ["admin", "feedback"] as const,
 }
 
 export const useSettings = () => useQuery({ queryKey: qk.settings, queryFn: api.getSettings, staleTime: 5 * 60_000 })
@@ -81,6 +84,11 @@ export const useAudit = () => useQuery({ queryKey: qk.audit, queryFn: api.listAu
 export const useVisitStats = () => useQuery({ queryKey: qk.visits, queryFn: api.getVisitStats, refetchInterval: 60_000 })
 export const useVenues = () => useQuery({ queryKey: qk.venues, queryFn: api.listVenues })
 export const useUsers = () => useQuery({ queryKey: qk.users, queryFn: api.listUsers })
+/** Menyudagi belgi uchun: yangi arizalar va o'qilmagan murojaatlar soni har daqiqada tekshiriladi */
+export const useApplicationCounts = (enabled: boolean) =>
+  useQuery({ queryKey: qk.applicationCounts, queryFn: api.getApplicationCounts, enabled, refetchInterval: 60_000, staleTime: 30_000 })
+export const useTeamApplications = () => useQuery({ queryKey: qk.teamApplications, queryFn: api.listTeamApplications, refetchInterval: 60_000 })
+export const useFeedback = () => useQuery({ queryKey: qk.feedback, queryFn: api.listFeedback, refetchInterval: 60_000 })
 
 /**
  * Admin amallari uchun umumiy mutation. Muvaffaqiyatli amaldan keyin barcha

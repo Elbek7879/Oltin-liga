@@ -9,6 +9,9 @@ import { ApiError, type AdminUser, type LeagueApi } from "../types"
 type Method = "GET" | "POST" | "PUT" | "DELETE"
 
 const NETWORK_ERROR = "Server bilan aloqa yo‘q. Internet aloqasini tekshirib, qayta urinib ko‘ring."
+const TIMEOUT_ERROR = "Server juda uzoq javob bermadi. Internet aloqasini tekshirib, qayta urinib ko‘ring."
+const REQUEST_TIMEOUT_MS = 30_000
+const UPLOAD_TIMEOUT_MS = 120_000
 
 let unauthorizedHandler: (() => void) | null = null
 
@@ -43,9 +46,11 @@ async function request<T>(method: Method, path: string, body?: unknown, options:
 
   let res: Response
   try {
-    res = await fetch(path, { method, headers, body: payload, credentials: "same-origin" })
-  } catch {
-    throw new ApiError(NETWORK_ERROR, 0)
+    // Internet «osilib» qolsa, «Saqlanmoqda…» cheksiz aylanmasin: so'rov vaqt chegarasidan keyin to'xtatiladi
+    const timeout = body instanceof FormData ? UPLOAD_TIMEOUT_MS : REQUEST_TIMEOUT_MS
+    res = await fetch(path, { method, headers, body: payload, credentials: "same-origin", signal: AbortSignal.timeout(timeout) })
+  } catch (err) {
+    throw new ApiError(err instanceof DOMException && err.name === "TimeoutError" ? TIMEOUT_ERROR : NETWORK_ERROR, 0)
   }
 
   if (res.status === 204) return undefined as T
@@ -83,6 +88,7 @@ export const httpApi: LeagueApi = {
   getArchive: () => request("GET", pub("/archive")),
   getTeamProfile: (teamId) => request("GET", pub(`/teams/${enc(teamId)}/profile`)),
   getPlayerProfile: (playerId) => request("GET", pub(`/players/${enc(playerId)}/profile`)),
+  getMatchSeason: (matchId) => request("GET", pub(`/matches/${enc(matchId)}/season`)),
   getHeadToHead: (a, b) => request("GET", pub(`/head-to-head?teamA=${enc(a)}&teamB=${enc(b)}`)),
   listNews: (options) => request("GET", options?.includeDrafts ? adm("/news") : pub("/news")),
   getNews: (slug) => request("GET", pub(`/news/${enc(slug)}`)),
@@ -183,4 +189,24 @@ export const httpApi: LeagueApi = {
     return request("POST", adm("/media"), form)
   },
   resetDemoData: () => Promise.reject(new ApiError("Bu amal faqat namunaviy rejimda mavjud.")),
+
+  // ---------- Murojaatlar ----------
+  submitTeamApplication: (input, logo, filename) => {
+    // Ma'lumotlar JSON qismida, logotip — fayl qismida: ariza logotip bilan birga bitta so'rovda saqlanadi
+    const form = new FormData()
+    form.append("data", new Blob([JSON.stringify(input)], { type: "application/json" }))
+    form.append("logo", logo, filename)
+    return request("POST", pub("/applications/team"), form)
+  },
+  submitFeedback: (input) => request("POST", pub("/applications/feedback"), input),
+  getApplicationCounts: () => request("GET", adm("/applications/counts")),
+  listTeamApplications: () => request("GET", adm("/applications/teams")),
+  acceptTeamApplication: (id) => request("POST", adm(`/applications/teams/${enc(id)}/accept`)),
+  ignoreTeamApplication: (id) => request("POST", adm(`/applications/teams/${enc(id)}/ignore`)),
+  restoreTeamApplication: (id) => request("POST", adm(`/applications/teams/${enc(id)}/restore`)),
+  deleteTeamApplication: (id) => request("DELETE", adm(`/applications/teams/${enc(id)}`)),
+  listFeedback: () => request("GET", adm("/applications/messages")),
+  markFeedbackRead: (id) => request("POST", adm(`/applications/messages/${enc(id)}/read`)),
+  markAllFeedbackRead: () => request("POST", adm("/applications/messages/read-all")),
+  deleteFeedback: (id) => request("DELETE", adm(`/applications/messages/${enc(id)}`)),
 }

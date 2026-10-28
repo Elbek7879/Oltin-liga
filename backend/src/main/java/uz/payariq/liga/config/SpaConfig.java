@@ -27,6 +27,14 @@ public class SpaConfig implements WebMvcConfigurer {
                 .addResourceLocations(STATIC + "assets/")
                 .setCacheControl(CacheControl.maxAge(365, TimeUnit.DAYS).cachePublic().immutable());
 
+        // Logotip va ulashish rasmi kam o'zgaradi — har sahifada qayta so'ralmasin (nomida xesh yo'q, shuning uchun 7 kun)
+        registry.addResourceHandler("/brand/**")
+                .addResourceLocations(STATIC + "brand/")
+                .setCacheControl(CacheControl.maxAge(7, TimeUnit.DAYS).cachePublic());
+        registry.addResourceHandler("/og-image.jpg", "/favicon-48.png", "/apple-touch-icon.png")
+                .addResourceLocations(STATIC)
+                .setCacheControl(CacheControl.maxAge(7, TimeUnit.DAYS).cachePublic());
+
         registry.addResourceHandler("/**")
                 .addResourceLocations(STATIC)
                 .setCacheControl(CacheControl.noCache())

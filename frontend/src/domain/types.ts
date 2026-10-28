@@ -169,6 +169,8 @@ export interface Match {
   livePeriod?: LivePeriod | null
   periodStartedAt?: string | null
   note?: string | null
+  /** Natija har saqlanganda oshadi: forma ochilgandan keyin boshqa joyda (bot, boshqa admin) o'zgarganini aniqlash uchun */
+  version?: number | null
 }
 
 export type LivePeriod = "FIRST_HALF" | "HALF_TIME" | "SECOND_HALF" | "EXTRA_TIME" | "PENALTIES"

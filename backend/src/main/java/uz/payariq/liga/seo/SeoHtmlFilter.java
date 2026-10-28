@@ -16,7 +16,6 @@ import java.util.regex.Pattern;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import org.springframework.web.util.HtmlUtils;
 import org.springframework.web.util.UrlPathHelper;
 import tools.jackson.databind.ObjectMapper;
@@ -39,10 +38,12 @@ public class SeoHtmlFilter extends OncePerRequestFilter {
 
     private final SeoService seo;
     private final ObjectMapper json;
+    private final SiteUrl site;
 
-    public SeoHtmlFilter(SeoService seo, ObjectMapper json) {
+    public SeoHtmlFilter(SeoService seo, ObjectMapper json, SiteUrl site) {
         this.seo = seo;
         this.json = json;
+        this.site = site;
     }
 
     @Override
@@ -61,7 +62,7 @@ public class SeoHtmlFilter extends OncePerRequestFilter {
             return;
         }
         PageMeta meta = seo.resolve(PATHS.getPathWithinApplication(request));
-        String base = ServletUriComponentsBuilder.fromContextPath(request).replaceQuery(null).build().toUriString();
+        String base = site.base(request);
         String html = BLOCK.matcher(template).replaceFirst(Matcher.quoteReplacement(head(meta, base)));
         byte[] body = html.getBytes(StandardCharsets.UTF_8);
         response.setStatus(meta.status());

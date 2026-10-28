@@ -374,6 +374,79 @@ export interface VisitInput {
   visitor: string
 }
 
+// ---------- Murojaatlar: yangi mavsumga ariza hamda taklif va shikoyatlar ----------
+
+export type ApplicationStatus = "NEW" | "ACCEPTED" | "IGNORED"
+/** SUGGESTION — taklif, COMPLAINT — shikoyat, REQUEST — murojaat */
+export type FeedbackKind = "SUGGESTION" | "COMPLAINT" | "REQUEST"
+
+export interface ApplicationPlayer {
+  firstName: string
+  lastName: string
+  birthYear: number | null
+  position: Position
+}
+
+/** Saytdan yuboriladigan jamoa arizasi (logotip alohida fayl bo'lib ketadi). website — botlar uchun tuzoq */
+export interface TeamApplicationInput {
+  teamName: string
+  village: string
+  contactPhone: string
+  players: ApplicationPlayer[]
+  website?: string
+}
+
+export interface FeedbackInput {
+  kind: FeedbackKind
+  body: string
+  authorName: string
+  phone: string
+  website?: string
+}
+
+export interface TeamApplication {
+  id: ID
+  teamName: string
+  village: string | null
+  logoUrl: string
+  contactPhone: string | null
+  status: ApplicationStatus
+  createdAt: string
+  decidedAt: string | null
+  decidedBy: string | null
+  seasonId: ID | null
+  seasonName: string | null
+  teamId: ID | null
+  /** Shu nomli jamoa ro'yxatda bor: qabul qilinsa, o'sha jamoa mavsumga qo'shiladi (tarixi saqlanadi) */
+  existingTeam: boolean
+  players: ApplicationPlayer[]
+}
+
+/** Qabul natijasi: returning — oldingi mavsumlardan tanilgan futbolchilar */
+export interface AcceptedApplication {
+  teamName: string
+  seasonName: string
+  players: number
+  returning: number
+  existingTeam: boolean
+}
+
+export interface FeedbackMessage {
+  id: ID
+  kind: FeedbackKind
+  body: string
+  authorName: string | null
+  phone: string | null
+  status: "NEW" | "READ"
+  createdAt: string
+}
+
+/** Ko'rib chiqilmagan arizalar va o'qilmagan murojaatlar soni */
+export interface ApplicationCounts {
+  teams: number
+  messages: number
+}
+
 export interface LeagueApi {
   // Ommaviy
   getSettings(): Promise<LeagueSettings>
@@ -384,12 +457,17 @@ export interface LeagueApi {
   getArchive(): Promise<ArchiveBundle>
   getTeamProfile(teamId: ID): Promise<TeamProfile>
   getPlayerProfile(playerId: ID): Promise<PlayerProfile>
+  /** O'yin qaysi mavsumga tegishli: boshqa mavsum o'yiniga havola ochilganda shu mavsumga o'tiladi */
+  getMatchSeason(matchId: ID): Promise<{ seasonId: ID }>
   getHeadToHead(teamA: ID, teamB: ID): Promise<HeadToHead>
   listNews(options?: { includeDrafts?: boolean }): Promise<News[]>
   getNews(slug: string): Promise<News>
   listSponsors(options?: { includeInactive?: boolean }): Promise<Sponsor[]>
   /** Tashrif statistikasi uchun: javob kutilmaydi, xato muxlisga ko'rsatilmaydi */
   trackVisit(input: VisitInput): void
+  /** Yangi mavsumga qo'shilish arizasi: ma'lumotlar va logotip bitta so'rovda */
+  submitTeamApplication(input: TeamApplicationInput, logo: Blob, filename: string): Promise<void>
+  submitFeedback(input: FeedbackInput): Promise<void>
 
   // Avtorizatsiya
   login(username: string, password: string): Promise<AdminUser>
@@ -470,6 +548,20 @@ export interface LeagueApi {
   deleteVenue(id: ID): Promise<void>
   /** Rasm yuklaydi va uning manzilini qaytaradi */
   uploadMedia(file: Blob, filename: string): Promise<{ url: string }>
+
+  // Arizalar (bosh tashkilotchi va administrator)
+  getApplicationCounts(): Promise<ApplicationCounts>
+  listTeamApplications(): Promise<TeamApplication[]>
+  /** Jamoa «Jamoalar» ro'yxatiga qo'shiladi va avtomatik ravishda yangi (tayyorlanayotgan) mavsum ishtirokchisi bo'ladi */
+  acceptTeamApplication(id: ID): Promise<AcceptedApplication>
+  ignoreTeamApplication(id: ID): Promise<void>
+  /** E'tiborsiz qoldirilgan arizani yana ko'rib chiqiladiganlar qatoriga qaytaradi */
+  restoreTeamApplication(id: ID): Promise<void>
+  deleteTeamApplication(id: ID): Promise<void>
+  listFeedback(): Promise<FeedbackMessage[]>
+  markFeedbackRead(id: ID): Promise<void>
+  markAllFeedbackRead(): Promise<void>
+  deleteFeedback(id: ID): Promise<void>
 
   // Ramziy jamoa
   listRoundTeams(seasonId: ID): Promise<RoundTeam[]>

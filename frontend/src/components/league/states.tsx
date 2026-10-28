@@ -25,9 +25,10 @@ export function SectionHeader({
         {title}
       </h2>
       {action && (
+        // Bosish maydoni 44px (telefonda barmoq bilan oson), manfiy margin sababli joylashuv o'zgarmaydi
         <Link
           to={action.to}
-          className="shrink-0 rounded-sm py-1 text-sm font-semibold text-gold-text underline-offset-4 hover:underline"
+          className="-my-2 inline-flex min-h-11 shrink-0 items-center rounded-sm text-sm font-semibold text-gold-text underline-offset-4 hover:underline"
         >
           {action.label}
         </Link>

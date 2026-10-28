@@ -1,6 +1,7 @@
 package uz.payariq.liga.security;
 
 import java.util.Optional;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -25,5 +26,11 @@ public class CurrentUser {
 
     public String displayName() {
         return get().map(u -> u.displayName).orElse("Tizim");
+    }
+
+    /** So'rov tizimga kirmagan foydalanuvchidan (muxlisdan) keldi — bazaga murojaat qilmaydi */
+    public static boolean anonymous() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth == null || !auth.isAuthenticated() || auth instanceof AnonymousAuthenticationToken;
     }
 }

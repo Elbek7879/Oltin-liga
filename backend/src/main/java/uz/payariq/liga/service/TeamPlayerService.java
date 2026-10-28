@@ -6,6 +6,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import uz.payariq.liga.common.ApiException;
+import uz.payariq.liga.domain.TeamNames;
 import uz.payariq.liga.model.LeagueGroup;
 import uz.payariq.liga.model.Match;
 import uz.payariq.liga.model.Player;
@@ -61,7 +62,7 @@ public class TeamPlayerService {
 
     public TeamDto createTeam(Requests.TeamInput in, UUID addToSeasonId) {
         String name = in.name().trim();
-        if (teams.existsByNameIgnoreCase(name)) throw ApiException.conflict("«" + name + "» nomli jamoa allaqachon bor.");
+        requireNameFree(name, null);
         if (addToSeasonId != null) ensureTeamListOpen(addToSeasonId, "yangi jamoa qo‘shib");
         Team t = new Team();
         apply(t, in);
@@ -77,7 +78,7 @@ public class TeamPlayerService {
     public TeamDto updateTeam(UUID teamId, Requests.TeamInput in) {
         Team t = team(teamId);
         String name = in.name().trim();
-        if (teams.existsByNameIgnoreCaseAndIdNot(name, teamId)) throw ApiException.conflict("«" + name + "» nomli jamoa allaqachon bor.");
+        requireNameFree(name, teamId);
         apply(t, in);
         // Faqat yakunlanmagan mavsumlardagi nom yangilanadi — arxiv tarixi o'zgarmaydi
         for (SeasonTeam st : seasonTeams.findByTeamId(teamId)) {
@@ -118,6 +119,12 @@ public class TeamPlayerService {
             removeSeasonTeam(st);
             audit.record("Jamoa", "«" + t.name + "» mavsumdan chiqarildi", "TEAM", teamId);
         }
+    }
+
+    /** Bir xil nomli ikkita jamoa bo'lmaydi: katta-kichik harf, o‘/g‘ tutuq belgisi va ortiqcha bo'shliq farq qilmaydi */
+    private void requireNameFree(String name, UUID exceptTeamId) {
+        boolean taken = teams.findAll().stream().anyMatch(t -> !t.getId().equals(exceptTeamId) && TeamNames.same(t.name, name));
+        if (taken) throw ApiException.conflict("«" + TeamNames.clean(name) + "» nomli jamoa allaqachon bor. Boshqa nom tanlang yoki o‘sha jamoani mavsumga qo‘shing.");
     }
 
     /** Qur'a tashlangach mavsum ishtirokchilari qulflanadi — aks holda jamoa guruhsiz qoladi yoki guruh juftliklari buziladi */
@@ -234,6 +241,8 @@ public class TeamPlayerService {
 
     public void deletePlayer(UUID playerId) {
         Player p = players.findById(playerId).orElseThrow(() -> ApiException.notFound("Futbolchi topilmadi."));
+        // Yakunlangan (arxivdagi) mavsum tarkibidagi futbolchi o'chirilmaydi — tarix o'zgarmasin
+        rosters.findByPlayerId(playerId).forEach(r -> loader.editableSeason(r.seasonId));
         if (events.existsForPlayer(playerId) || appearances.existsByPlayerId(playerId)) {
             throw ApiException.conflict("Bu futbolchining o‘yinlar statistikasi bor, uni o‘chirib bo‘lmaydi. Uning o‘rniga jamoa tarkibidan chiqaring.");
         }

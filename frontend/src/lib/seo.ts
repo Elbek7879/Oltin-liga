@@ -31,6 +31,7 @@ export const STATIC_PAGES: Record<string, [string, string]> = {
   "/liga-haqida": ["Liga haqida", "Liga qayerda o‘tadi, kimlar qatnashadi va qanday qatnashish mumkin."],
   "/nizom": ["Musobaqa nizomi", "Musobaqa qoidalari: ochkolar, teng ochkoda tartib, pley-offga chiqish va intizom."],
   "/maxfiylik": ["Maxfiylik siyosati", "Sayt qanday ma’lumotlarni saqlaydi, nima uchun va futbolchi o‘z ma’lumotini qanday tuzattirishi mumkin."],
+  "/murojaat": ["Murojaat va arizalar", "Yangi mavsumga jamoa arizasi yuborish hamda liga uchun taklif va shikoyatlar."],
 }
 
 export const pageTitle = (title: string, league: string) => `${title} — ${league}`

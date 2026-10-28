@@ -61,7 +61,7 @@ Kompyuterdan serverga fayllarni ko‘chiring (`scp` yoki WinSCP orqali): `oltin-
 cd /opt/oltin-liga
 sudo mv ~/oltin-liga.jar ~/backup.sh .
 sudo cp ~/env.production.example .env
-sudo nano .env              # DB_PASSWORD, ADMIN_PASSWORD, TELEGRAM_BOT_TOKEN va TELEGRAM_BOT_USERNAME ni yozing
+sudo nano .env              # SITE_URL, DB_PASSWORD, ADMIN_PASSWORD, TELEGRAM_BOT_TOKEN va TELEGRAM_BOT_USERNAME ni yozing
 sudo chmod 600 .env && sudo chmod 750 backup.sh
 sudo chown -R liga:liga /opt/oltin-liga
 
@@ -80,6 +80,8 @@ Birinchi ishga tushishda baza jadvallari avtomatik yaratiladi. Production rejimi
 **Telegram bot.** Bot server ichida ishlaydi va Telegram'ga o‘zi ulanadi — alohida server, domen yoki ochiq port kerak emas. `.env` da `TELEGRAM_BOT_TOKEN` bo‘lsa, ilova ishga tushishi bilan bot ham ishlaydi (jurnalda «Telegram bot ishga tushdi»). Bitta token bilan bir vaqtda faqat bitta server ishlashi kerak: serverga ko‘chirgach, kompyuterdagi nusxani o‘chiring yoki undagi tokenni olib tashlang.
 
 **Jonli yangilanishlar.** Gollar saytda darhol ko‘rinishi uchun `/api/public/live` oqimi ishlatiladi; `deploy/Caddyfile` da u siqishsiz uzatiladigan qilib sozlangan — shu faylni o‘zgartirmasdan ishlating.
+
+**Sayt manzili va xavfsizlik.** `.env` dagi `SITE_URL` (masalan `https://sizning-domen.uz`) albatta to‘ldirilsin: Google uchun canonical havolalar, `sitemap.xml` va `robots.txt` shu manzildan olinadi — so‘rov sarlavhalari orqali begona domenni qo‘yib bo‘lmaydi. `deploy/Caddyfile` dagi `header_up -Forwarded` qatorlarini o‘chirmang: ular login urinishlari chegarasini IP manzilini soxtalashtirib aylanib o‘tishdan himoya qiladi.
 
 ## 5. Birinchi kirish
 

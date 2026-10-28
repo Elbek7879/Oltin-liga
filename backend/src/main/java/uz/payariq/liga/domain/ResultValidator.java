@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
+import jakarta.validation.constraints.Size;
 import uz.payariq.liga.model.Match;
 
 /**
@@ -38,11 +39,18 @@ public final class ResultValidator {
             /* Texnik mag'lubiyat berilgan tomon: "home" yoki "away" */
             String forfeitLoser,
             Integer liveMinute,
-            List<ResultEvent> events,
-            List<AppearanceInput> appearances) {
+            @Size(max = 300, message = "Bitta o‘yinda hodisalar juda ko‘p") List<ResultEvent> events,
+            @Size(max = 300, message = "O‘yinda qatnashganlar ro‘yxati juda uzun") List<AppearanceInput> appearances,
+            /* Forma ochilgandagi o'yin versiyasi (MatchDto.version). Bo'sh bo'lsa tekshirilmaydi (Telegram bot) */
+            Integer version) {
 
         public List<ResultEvent> safeEvents() {
             return events == null ? List.of() : events;
+        }
+
+        /** Texnik mag'lubiyatda gollar yozilmaydi, lekin kartochkalar saqlanadi (diskvalifikatsiya va Fair Play uchun) */
+        public List<ResultEvent> forfeitCards() {
+            return safeEvents().stream().filter(e -> e.type() != null && e.type().isCard()).toList();
         }
     }
 
@@ -110,6 +118,8 @@ public final class ResultValidator {
                 errors.add("Texnik mag‘lubiyat berilgan jamoani tanlang.");
             }
             if (input.status() != MatchStatus.FINISHED) errors.add("Texnik mag‘lubiyat faqat yakunlangan o‘yinga beriladi.");
+            // Gollar yozilmaydi (hisob 3:0), kartochkalar esa odatdagidek tekshirilib saqlanadi
+            checkEvents(input.forfeitCards(), homeId, awayId, rosterOf, teamName, errors);
             return new ValidationResult(List.copyOf(errors), warnings);
         }
 
@@ -155,10 +165,29 @@ public final class ResultValidator {
             errors.add(teamName.apply(awayId) + ": hisobda " + awayTotal + " ta gol, kiritilgan gollar esa " + fromEvents.away() + " ta. Gol mualliflarini tekshiring.");
         }
 
+        int unknownScorers = checkEvents(input.safeEvents(), homeId, awayId, rosterOf, teamName, errors);
+
+        if (input.appearances() != null) {
+            for (AppearanceInput a : input.appearances()) {
+                if (!homeId.equals(a.seasonTeamId()) && !awayId.equals(a.seasonTeamId())) {
+                    errors.add("O‘yinda qatnashganlar ro‘yxatida boshqa jamoa futbolchisi bor.");
+                } else if (!rosterOf.apply(a.seasonTeamId()).contains(a.playerId())) {
+                    errors.add("O‘yinda qatnashganlar ro‘yxatidagi futbolchi jamoa tarkibida yo‘q.");
+                }
+            }
+        }
+
+        if (unknownScorers > 0) warnings.add(unknownScorers + " ta gol muallifi ko‘rsatilmagan. Ular to‘purarlar reytingiga kirmaydi.");
+        return new ValidationResult(List.copyOf(errors), warnings);
+    }
+
+    /** Gol va kartochkalarni tekshiradi; muallifi ko'rsatilmagan gollar sonini qaytaradi */
+    private static int checkEvents(List<ResultEvent> events, UUID homeId, UUID awayId, Function<UUID, Set<UUID>> rosterOf,
+                                   Function<UUID, String> teamName, Set<String> errors) {
         Map<UUID, Integer> reds = new HashMap<>();
         Map<UUID, Integer> yellows = new HashMap<>();
         int unknownScorers = 0;
-        for (ResultEvent e : input.safeEvents()) {
+        for (ResultEvent e : events) {
             if (e.type() == null) {
                 errors.add("Hodisa turini tanlang.");
                 continue;
@@ -185,19 +214,7 @@ public final class ResultValidator {
         }
         if (reds.values().stream().anyMatch(c -> c > 1)) errors.add("Bitta futbolchiga bir o‘yinda bittadan ortiq qizil kartochka berib bo‘lmaydi.");
         if (yellows.values().stream().anyMatch(c -> c > 1)) errors.add("Ikkinchi sariq kartochka uchun «Ikkinchi sariq» turini tanlang.");
-
-        if (input.appearances() != null) {
-            for (AppearanceInput a : input.appearances()) {
-                if (!homeId.equals(a.seasonTeamId()) && !awayId.equals(a.seasonTeamId())) {
-                    errors.add("O‘yinda qatnashganlar ro‘yxatida boshqa jamoa futbolchisi bor.");
-                } else if (!rosterOf.apply(a.seasonTeamId()).contains(a.playerId())) {
-                    errors.add("O‘yinda qatnashganlar ro‘yxatidagi futbolchi jamoa tarkibida yo‘q.");
-                }
-            }
-        }
-
-        if (unknownScorers > 0) warnings.add(unknownScorers + " ta gol muallifi ko‘rsatilmagan. Ular to‘purarlar reytingiga kirmaydi.");
-        return new ValidationResult(List.copyOf(errors), warnings);
+        return unknownScorers;
     }
 
     /** Saqlanadigan yakuniy natijani aniqlaydi (g'olib va qanday hal bo'lgani) */

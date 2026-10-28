@@ -3,6 +3,7 @@ import { useMemo, useState } from "react"
 import { Link } from "react-router"
 import { useNews } from "@/api/hooks"
 import { AboutCard } from "@/components/league/about-card"
+import { ApplyCard } from "@/components/league/apply-card"
 import { FeaturedMatch } from "@/components/league/featured-match"
 import { MyTeamPanel } from "@/components/league/my-team-panel"
 import { MatchRow } from "@/components/league/match-row"
@@ -205,6 +206,7 @@ export default function HomePage() {
           </section>
           <RoundTeamTeaser index={index} />
           <AboutCard />
+          <ApplyCard />
         </aside>
       </div>
 

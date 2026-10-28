@@ -56,6 +56,11 @@ public class ResultService {
     public MatchDto save(UUID matchId, ResultInput input) {
         Match m = matches.findById(matchId).orElseThrow(() -> ApiException.notFound("O‘yin topilmadi."));
         loader.editableSeason(m.seasonId);
+        // Forma ochilgandan keyin natija boshqa joyda (masalan, Telegram botda) o'zgargan bo'lsa — eski forma yangi gollarni o'chirib yubormasin
+        if (input.version() != null && !input.version().equals(m.getVersion())) {
+            throw ApiException.conflict("Bu o‘yin natijasi siz sahifani ochganingizdan keyin boshqa joyda o‘zgartirildi (masalan, Telegram bot orqali). "
+                    + "Sahifani yangilang va o‘zgarishlarni qaytadan kiriting.");
+        }
         boolean playing = input.status() == MatchStatus.LIVE || input.status() == MatchStatus.FINISHED;
         if (playing && !m.timeConfirmed) {
             throw ApiException.badRequest("Avval o‘yin sanasi va vaqtini belgilang («O‘yinlar» bo‘limi), so‘ng natijani kiriting.");
@@ -92,11 +97,16 @@ public class ResultService {
         m.decidedBy = outcome.decidedBy();
         m.winnerId = outcome.winnerId();
         m.liveMinute = input.status() == MatchStatus.LIVE ? input.liveMinute() : null;
+        // Faqat hodisalar o'zgarsa ham versiya oshadi; o'yin qatori shu yerda bloklanadi — bir vaqtdagi ikkinchi saqlash 409 oladi
+        m.touch();
 
         events.deleteAll(events.findByMatchId(matchId));
         events.flush();
-        if (regular) {
-            for (ResultValidator.ResultEvent e : input.safeEvents()) {
+        // Texnik mag'lubiyatda gollar yozilmaydi, kartochkalar saqlanadi
+        List<ResultValidator.ResultEvent> kept = regular ? input.safeEvents()
+                : playable && input.forfeitLoser() != null ? input.forfeitCards() : List.of();
+        if (!kept.isEmpty()) {
+            for (ResultValidator.ResultEvent e : kept) {
                 MatchEvent ev = new MatchEvent();
                 ev.matchId = matchId;
                 ev.type = e.type();
@@ -154,6 +164,8 @@ public class ResultService {
             kind = "UPDATE";
         }
         publisher.publishEvent(new LiveUpdates.LiveEvent(m.seasonId, m.getId(), kind, side));
+        // Javobdagi versiya bazadagi bilan bir xil bo'lsin (keyingi saqlash shu versiya bilan keladi)
+        matches.flush();
         return MatchDto.of(m);
     }
 }

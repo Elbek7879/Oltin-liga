@@ -17,10 +17,12 @@ public class AuditService {
 
     private final AuditLogRepository repo;
     private final CurrentUser currentUser;
+    private final BundleCache bundles;
 
-    public AuditService(AuditLogRepository repo, CurrentUser currentUser) {
+    public AuditService(AuditLogRepository repo, CurrentUser currentUser, BundleCache bundles) {
         this.repo = repo;
         this.currentUser = currentUser;
+        this.bundles = bundles;
     }
 
     public void record(String action, String summary, String entityType, UUID entityId) {
@@ -36,6 +38,8 @@ public class AuditService {
         log.entityId = entityId;
         log.ipAddress = clientIp();
         repo.save(log);
+        // Har bir saqlangan o'zgarishdan keyin muxlislar keshi tozalanadi — saytda eskirgan ma'lumot qolmaydi
+        bundles.evictAllAfterCommit();
     }
 
     private static String clientIp() {

@@ -210,7 +210,8 @@ export default function HomePage() {
         </aside>
       </div>
 
-      {(important || latestNews.length > 0) && (
+      {/* Muhim e'lon tepada alohida turadi — bo'lim faqat boshqa yangiliklar bo'lsa chiqadi (aks holda sarlavha bo'sh qoladi) */}
+      {latestNews.length > 0 && (
         <section aria-labelledby="news-title" className="container-page mt-8">
           <SectionHeader id="news-title" title="E’lonlar va yangiliklar" action={{ label: "Barcha yangiliklar", to: "/yangiliklar" }} />
           <ul className="grid gap-3 md:grid-cols-3">

@@ -145,6 +145,22 @@ function requireTeamListOpen(db: LeagueDb, seasonId: ID, action: string) {
   )
 }
 
+/**
+ * Tarkibni yangi mavsumga ko'chiradi: futbolchilar raqamlari bilan, sardor va murabbiy (backenddagi copyRoster bilan bir xil).
+ * Shu mavsumda boshqa jamoa tarkibida turgan futbolchi ko'chirilmaydi. Qaytaradi: ko'chirilganlar soni
+ */
+function copyRoster(db: LeagueDb, from: SeasonTeam, to: SeasonTeam) {
+  let copied = 0
+  for (const r of db.rosters.filter((x) => x.seasonTeamId === from.id)) {
+    if (db.rosters.some((x) => x.seasonId === to.seasonId && x.playerId === r.playerId)) continue
+    db.rosters.push({ id: newId("r"), seasonId: to.seasonId, seasonTeamId: to.id, playerId: r.playerId, number: r.number })
+    copied++
+    if (r.playerId === from.captainId) to.captainId = from.captainId
+  }
+  to.coach = from.coach
+  return copied
+}
+
 function requireEditable(db: LeagueDb, seasonId: ID) {
   const s = season(db, seasonId)
   if (s.status === "FINISHED") fail(`${s.name} yakunlangan va arxivga qulflangan. Tarixiy ma’lumotlarni o‘zgartirib bo‘lmaydi.`)
@@ -201,8 +217,11 @@ function lotOrder(db: LeagueDb, seasonId: ID, scope: string): ID[] {
   return (db.lots ?? []).find((l) => l.seasonId === seasonId && l.scope === scope)?.order ?? []
 }
 
+/** Bir o'rinda bir nechta alohida teng holat bo'lishi mumkin: yangi tartib faqat shu jamoalar uchun yangilanadi (server bilan bir xil) */
 function saveLot(db: LeagueDb, seasonId: ID, scope: string, order: ID[]) {
-  db.lots = [...(db.lots ?? []).filter((l) => !(l.seasonId === seasonId && l.scope === scope)), { seasonId, scope, order }]
+  const previous = (db.lots ?? []).find((l) => l.seasonId === seasonId && l.scope === scope)?.order ?? []
+  const merged = [...previous.filter((id) => !order.includes(id)), ...order]
+  db.lots = [...(db.lots ?? []).filter((l) => !(l.seasonId === seasonId && l.scope === scope)), { seasonId, scope, order: merged }]
 }
 
 function shuffled<T>(list: T[]): T[] {
@@ -855,18 +874,21 @@ export const mockApi: LeagueApi = {
       rules: input.rules ?? defaultRules(),
     }
     db.seasons.push(s)
+    let copiedTeams = 0
     if (input.copyTeamsFromSeasonId) {
+      // Tanlangan jamoalar futbolchilari, raqamlari, sardori va murabbiyi bilan ko'chadi
+      const chosen = input.copyTeamIds ? new Set(input.copyTeamIds) : null
       for (const old of db.seasonTeams.filter((x) => x.seasonId === input.copyTeamsFromSeasonId)) {
+        if (chosen && !chosen.has(old.teamId)) continue
         const team = db.teams.find((t) => t.id === old.teamId)!
         if (!team.active) continue
-        const st: SeasonTeam = { id: newId("st"), seasonId: s.id, teamId: team.id, name: team.name, shortName: team.shortName, captainId: old.captainId, coach: old.coach }
+        const st: SeasonTeam = { id: newId("st"), seasonId: s.id, teamId: team.id, name: team.name, shortName: team.shortName }
         db.seasonTeams.push(st)
-        for (const r of db.rosters.filter((x) => x.seasonTeamId === old.id)) {
-          db.rosters.push({ id: newId("r"), seasonId: s.id, seasonTeamId: st.id, playerId: r.playerId, number: r.number })
-        }
+        copyRoster(db, old, st)
+        copiedTeams++
       }
     }
-    audit(db, "Mavsum", `«${s.name}» (${s.year})${s.test ? " sinov mavsumi" : ""} yaratildi`)
+    audit(db, "Mavsum", `«${s.name}» (${s.year})${s.test ? " sinov mavsumi" : ""} yaratildi${copiedTeams > 0 ? `, ${copiedTeams} ta jamoa tarkibi bilan ko‘chirildi` : ""}`)
     save()
     return delay(s)
   },
@@ -1030,16 +1052,27 @@ export const mockApi: LeagueApi = {
     return delay(undefined)
   },
 
-  async setTeamInSeason(teamId, seasonId, inSeason) {
+  async setTeamInSeason(teamId, seasonId, inSeason, withPlayers = true) {
     requireAdmin()
     const db = load()
     requireEditable(db, seasonId)
     const team = db.teams.find((t) => t.id === teamId) ?? fail("Jamoa topilmadi.")
     const st = db.seasonTeams.find((x) => x.seasonId === seasonId && x.teamId === teamId)
     if (inSeason !== Boolean(st)) requireTeamListOpen(db, seasonId, inSeason ? "yangi jamoa qo‘shib" : "jamoani mavsumdan chiqarib")
+    let copied = 0
     if (inSeason && !st) {
-      db.seasonTeams.push({ id: newId("st"), seasonId, teamId, name: team.name, shortName: team.shortName })
-      audit(db, "Jamoa", `«${team.name}» mavsumga qo‘shildi`)
+      const added: SeasonTeam = { id: newId("st"), seasonId, teamId, name: team.name, shortName: team.shortName }
+      db.seasonTeams.push(added)
+      // Oldingi tarkib: jamoaning sinov bo'lmagan eng so'nggi mavsumi
+      const previous = withPlayers
+        ? db.seasonTeams
+            .filter((x) => x.teamId === teamId && x.seasonId !== seasonId)
+            .map((x) => ({ x, s: db.seasons.find((s) => s.id === x.seasonId)! }))
+            .filter(({ s }) => !s.test)
+            .sort((a, b) => b.s.number - a.s.number)[0]?.x
+        : undefined
+      if (previous) copied = copyRoster(db, previous, added)
+      audit(db, "Jamoa", `«${team.name}» mavsumga qo‘shildi${copied > 0 ? ` (oldingi tarkibidan ${copied} ta futbolchi bilan)` : ""}`)
     } else if (!inSeason && st) {
       if (db.matches.some((m) => m.homeId === st.id || m.awayId === st.id)) {
         fail(`«${team.name}» uchun bu mavsumda o‘yinlar belgilangan. Avval o‘sha o‘yinlarni o‘chiring.`)
@@ -1050,7 +1083,7 @@ export const mockApi: LeagueApi = {
       audit(db, "Jamoa", `«${team.name}» mavsumdan chiqarildi`)
     }
     save()
-    return delay(undefined)
+    return delay({ copiedPlayers: copied })
   },
 
   // ---------- Admin: futbolchilar ----------

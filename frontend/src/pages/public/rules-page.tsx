@@ -7,6 +7,7 @@ import { firstRoundFor, groupFinishes, playoffPlan, qualifiersFor, ROUND_LABELS,
 import { DEFAULT_HALF_MINUTES } from "@/domain/schedule"
 import { FAIR_PLAY_POINTS, TIEBREAKER_LABELS } from "@/domain/standings"
 import { useSeasonData } from "@/hooks/use-season-data"
+import { seasonLabel } from "@/lib/format"
 import { UNCONFIRMED_DATE } from "@/lib/playoff-overview"
 
 const ORDINAL = (n: number) => Array.from({ length: n }, (_, i) => `${i + 1}`).join("-, ") + "-o‘rin"
@@ -58,7 +59,7 @@ export default function RulesPage() {
 
   return (
     <div className="container-page pt-5 md:pt-8">
-      <PageHeader title="Musobaqa nizomi" description={`${season.year}-yil, ${season.name}. Musobaqa qanday o‘tadi: guruhlar, pley-off, ochkolar va jazolar.`} />
+      <PageHeader title="Musobaqa nizomi" description={`${seasonLabel(season)}. Musobaqa qanday o‘tadi: guruhlar, pley-off, ochkolar va jazolar.`} />
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[15rem_minmax(0,52rem)] lg:gap-8">
       <nav aria-label="Nizom bo‘limlari" className="min-w-0 lg:sticky lg:top-24 lg:h-fit">

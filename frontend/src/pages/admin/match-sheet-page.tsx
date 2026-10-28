@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { suspendedFor } from "@/domain/discipline"
 import type { ID, Match, MatchEvent } from "@/domain/types"
 import { useSeasonData, type SeasonIndex } from "@/hooks/use-season-data"
-import { formatDate, formatTime } from "@/lib/format"
+import { formatDate, formatTime, seasonLabel } from "@/lib/format"
 import { scoreNote, sideName, stageLabel, totalScore } from "@/lib/match"
 import { cn } from "@/lib/utils"
 
@@ -150,7 +150,7 @@ export default function MatchSheetPage() {
           <div className="min-w-0">
             <p className="font-display text-xl leading-tight">Payariq Oltin Ligasi</p>
             <p className="text-xs">
-              {index.bundle.season.year}-yil, {index.bundle.season.name}
+              {seasonLabel(index.bundle.season)}
             </p>
           </div>
           <h1 className="ml-auto text-right font-display text-2xl leading-tight">O‘yin bayonnomasi</h1>

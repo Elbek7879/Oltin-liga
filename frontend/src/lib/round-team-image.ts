@@ -2,7 +2,7 @@ import type { TeamView } from "@/api/types"
 import { ROUND_TEAM_SLOTS, roundKeyOf, roundOptions, roundStats } from "@/domain/round-team"
 import type { RoundTeam, RoundTeamSlotKey } from "@/domain/types"
 import type { SeasonIndex } from "@/hooks/use-season-data"
-import { formatDateRange, slugify } from "./format"
+import { formatDateRange, seasonLabel, slugify } from "./format"
 import { FONT, SHIELD, SHIELD_TOP, ball, fitText, loadImage, publicSiteName, type Ctx } from "./match-image"
 import { toCyrillic } from "./translit"
 
@@ -90,7 +90,7 @@ export function roundTeamImageData(team: RoundTeam, index: SeasonIndex, host = t
     stage: team.stage === "GROUP" ? "-tur" : label,
     title: "Ramziy jamoa",
     subtitle: dates ? `${dates} o‘yinlarining eng yaxshi futbolchilari` : "Eng yaxshi futbolchilar",
-    season: `${season.year}-yil, ${season.name}`,
+    season: seasonLabel(season),
     venue: venueId ? (index.venue(venueId)?.name ?? null) : null,
     players,
     site: publicSiteName(host),

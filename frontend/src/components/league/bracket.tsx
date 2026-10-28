@@ -84,10 +84,11 @@ export function BracketMatch({
         const won = winner === r.side
         const lost = Boolean(winner) && !won
         return (
-          <span key={r.side} className={cn("relative flex h-9 items-center gap-2 pr-2 pl-3 text-sm", r.side === "home" && "border-b border-border", won && "font-semibold", lost && "text-muted-foreground")}>
+          <span key={r.side} className={cn("relative flex min-h-9 items-center gap-2 py-1 pr-2 pl-3 text-sm", r.side === "home" && "border-b border-border", won && "font-semibold", lost && "text-muted-foreground")}>
             {won && <span aria-hidden="true" className="absolute inset-y-1.5 left-0 w-[3px] rounded-r-full bg-gold" />}
             <TeamCrest team={r.team} size="xs" className={cn(lost && "opacity-60")} />
-            <span title={r.name} className={cn("min-w-0 flex-1 truncate", !r.team && "text-xs text-muted-foreground italic")}>
+            {/* Katta setkada karta tor: uzun nom kesilmasin — ikki qatorga o'tadi */}
+            <span title={r.name} className={cn("line-clamp-2 min-w-0 flex-1 leading-tight break-words", !r.team && "text-xs text-muted-foreground italic")}>
               {r.name}
             </span>
             {r.mine && (
@@ -105,7 +106,7 @@ export function BracketMatch({
           </span>
         )
       })}
-      <span className="flex items-center justify-between gap-2 bg-muted/50 px-3 py-1 text-2xs text-muted-foreground">
+      <span className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 bg-muted/50 px-3 py-1 text-2xs text-muted-foreground">
         {live ? (
           <span className="inline-flex items-center gap-1 font-semibold text-live">
             <LiveDot />
@@ -122,7 +123,7 @@ export function BracketMatch({
             {formatShortDate(match.kickoff)}, {formatTime(match.kickoff)}
           </span>
         )}
-        {(decided ?? note) && <span className="truncate text-right">{decided ?? note}</span>}
+        {(decided ?? note) && <span className="text-right">{decided ?? note}</span>}
       </span>
     </Wrapper>
   )
@@ -217,7 +218,8 @@ export function Bracket({ matches, index, linkable = true, headingLevel = 3 }: {
   const final = matches.find((m) => m.playoffRound === "F")
   const third = matches.find((m) => m.playoffRound === "THIRD")
   const firstSide = sideRounds.length > 0 ? halfOf(sideRounds[0], "L").length : 1
-  const height = Math.max(firstSide * 120, 200)
+  // Har o'yinga joy: ikki qatorli nomli karta ham qo'shnisiga tegmasin
+  const height = Math.max(firstSide * 136, 200)
 
   const columns: { key: string; label: string; side: Side | "C"; round: PlayoffRoundKey; depth: number }[] = [
     ...sideRounds.map((r, i) => ({ key: `L-${r}`, label: ROUND_LABELS[r], side: "L" as const, round: r, depth: i })),
@@ -246,7 +248,13 @@ export function Bracket({ matches, index, linkable = true, headingLevel = 3 }: {
         </section>
       )}
 
-      <div className="overflow-x-auto overscroll-x-contain pb-2">
+      {/* Katta setka gorizontal suriladi: klaviatura bilan ham (Tab → strelkalar) ko'rish mumkin bo'lsin */}
+      <div
+        tabIndex={0}
+        role="region"
+        aria-label="Pley-off setkasi"
+        className="overflow-x-auto overscroll-x-contain rounded-lg pb-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+      >
         <div className="grid justify-center gap-x-5" style={template}>
           {columns.map((c) => (
             <RoundHeading key={c.key} className={cn("mb-2 text-center text-xs font-semibold text-muted-foreground", c.side === "C" && "text-gold-text")}>

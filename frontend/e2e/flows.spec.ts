@@ -604,3 +604,53 @@ test.describe("Sinov mavsumi", () => {
     expect(errors).toEqual([])
   })
 })
+
+test.describe("Yangi mavsumga jamoalarni ko‘chirish", () => {
+  test("o‘tgan mavsum jamoalari futbolchilari bilan ko‘chadi; qatnashmaydigani belgidan chiqariladi va keyin oldingi tarkibi bilan qo‘shiladi", async ({ page }) => {
+    const errors = collectErrors(page)
+    const name = `Ko‘chirish ${Date.now().toString(36)}`
+    await loginAsAdmin(page)
+    await page.goto("/admin/mavsumlar")
+    await page.getByRole("button", { name: "Yangi mavsum" }).click()
+    const dialog = page.getByRole("dialog", { name: "Yangi mavsum" })
+    // Sinov mavsumi (keyin butunlay o'chiriladi); sinov belgisi manbani bo'shatadi — qayta tanlanadi
+    await dialog.getByRole("checkbox", { name: /Sinov mavsumi/ }).click()
+    await dialog.getByLabel("Nomi").fill(name)
+    await dialog.getByLabel("Jamoalarni ko‘chirish").click()
+    await page.getByRole("option", { name: /jamoalari$/ }).first().click()
+
+    // Hammasi oldindan belgilangan
+    const picker = dialog.getByRole("group", { name: "Qaysi jamoalar qatnashadi?" })
+    const boxes = picker.getByRole("checkbox")
+    const total = await boxes.count()
+    expect(total).toBeGreaterThan(2)
+    await expect(picker.getByRole("checkbox", { checked: true })).toHaveCount(total)
+    const skipped = (await picker.locator("li").first().locator("span.truncate").innerText()).trim()
+    await boxes.first().click()
+    await expect(picker).toContainText(`${total - 1} / ${total} ta jamoa`)
+    await noHorizontalScroll(page)
+    await dialog.getByRole("button", { name: "Mavsumni yaratish" }).click()
+    await expect(page.getByText(`«${name}» sinov mavsumi yaratildi`)).toBeVisible()
+
+    // Ko'chgan jamoalar tarkibi bilan; belgidan chiqarilgani mavsumda yo'q
+    await page.goto("/admin/jamoalar")
+    await expect(page.locator("#admin-main").getByText(/\d+ ta futbolchi/).first()).toBeVisible()
+    const late = page.getByRole("switch", { name: new RegExp(`^${skipped}:`) })
+    await expect(late).not.toBeChecked()
+    await expect(page.getByRole("switch", { checked: true })).toHaveCount(total - 1)
+
+    // Kech qaytgan jamoa oldingi tarkibi bilan qo'shiladi
+    await late.click()
+    await expect(page.getByText(new RegExp(`«${skipped}» mavsumga oldingi tarkibi bilan qo‘shildi: \\d+ ta futbolchi`))).toBeVisible()
+    await expect(late).toBeChecked()
+
+    // Sinov mavsumi o'chiriladi
+    await page.goto("/admin/mavsumlar")
+    await page.locator("#admin-main li", { hasText: name }).getByRole("button", { name: `«${name}»ni o‘chirish` }).click()
+    const confirm = page.getByRole("dialog")
+    await confirm.getByLabel(/Tasdiqlash uchun mavsum nomini yozing/).fill(name)
+    await confirm.getByRole("button", { name: "Butunlay o‘chirish" }).click()
+    await expect(page.getByText(new RegExp(`«${name}» o‘chirildi`))).toBeVisible()
+    expect(errors).toEqual([])
+  })
+})

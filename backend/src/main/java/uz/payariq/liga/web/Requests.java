@@ -57,6 +57,8 @@ public final class Requests {
             @NotNull(message = "Tugash sanasini tanlang") LocalDate endDate,
             @Valid Rules rules,
             UUID copyTeamsFromSeasonId,
+            /** Ko'chiriladigan jamoalar (jamoa id). Berilmasa — o'sha mavsumning barcha faol jamoalari */
+            List<@NotNull UUID> copyTeamIds,
             /** Sinov mavsumi — saytda ko'rinmaydi, keyin o'chiriladi. Ixtiyoriy: yuborilmasa — oddiy mavsum */
             Boolean test) {
         public boolean isTest() {
@@ -78,7 +80,11 @@ public final class Requests {
             @Pattern(regexp = MEDIA_URL, message = "Logotip avval «Rasm yuklash» orqali yuklanishi kerak") String logoUrl) {
     }
 
-    public record TeamInSeason(boolean inSeason) {
+    /** withPlayers: qo'shilgan jamoa oxirgi ishtirok etgan mavsumdagi tarkibi bilan keladi (berilmasa — ha) */
+    public record TeamInSeason(boolean inSeason, Boolean withPlayers) {
+        public boolean copyPlayers() {
+            return !Boolean.FALSE.equals(withPlayers);
+        }
     }
 
     public record PlayerInput(

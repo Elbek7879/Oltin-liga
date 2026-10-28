@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { topScorers } from "@/domain/stats"
 import { useSeason } from "@/hooks/use-season"
 import { useSeasonData } from "@/hooks/use-season-data"
-import { formatDate } from "@/lib/format"
+import { formatDate, seasonLabel } from "@/lib/format"
 import { totalScore } from "@/lib/match"
 
 export default function AdminReportsPage() {
@@ -28,7 +28,7 @@ export default function AdminReportsPage() {
     <div className="mx-auto max-w-5xl">
       <AdminPageHeader
         title="Hisobotlar"
-        description={`${data.season.year}-yil, ${data.season.name} bo‘yicha umumiy ko‘rsatkichlar`}
+        description={`${seasonLabel(data.season)} bo‘yicha umumiy ko‘rsatkichlar`}
         actions={
           <Button variant="outline" onClick={() => window.print()} className="no-print">
             <Printer aria-hidden="true" />

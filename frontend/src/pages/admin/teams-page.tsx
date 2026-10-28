@@ -279,7 +279,16 @@ export default function AdminTeamsPage() {
                     checked={t.inSeason}
                     disabled={readOnly || locked || toggle.isPending}
                     onCheckedChange={(v) =>
-                      runAction(() => toggle.mutateAsync({ teamId: t.id, inSeason: v }), v ? `«${t.name}» mavsumga qo‘shildi` : `«${t.name}» mavsumdan chiqarildi`)
+                      // Qaytgan jamoa oxirgi ishtirok etgan mavsumdagi tarkibi bilan qo'shiladi
+                      runAction(
+                        () => toggle.mutateAsync({ teamId: t.id, inSeason: v }),
+                        (r) =>
+                          !v
+                            ? `«${t.name}» mavsumdan chiqarildi`
+                            : r.copiedPlayers > 0
+                              ? `«${t.name}» mavsumga oldingi tarkibi bilan qo‘shildi: ${r.copiedPlayers} ta futbolchi`
+                              : `«${t.name}» mavsumga qo‘shildi`,
+                      )
                     }
                     aria-label={`${t.name}: ${seasonTitle(season)} mavsumida ishtirok${locked ? " (qur’a tashlangan, o‘zgartirib bo‘lmaydi)" : ""}`}
                   />

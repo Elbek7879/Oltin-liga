@@ -113,9 +113,8 @@ public class AdminController {
     }
 
     @PutMapping("/seasons/{seasonId}/teams/{teamId}")
-    public ResponseEntity<Void> setTeamInSeason(@PathVariable UUID seasonId, @PathVariable UUID teamId, @RequestBody Requests.TeamInSeason in) {
-        teamsPlayers.setInSeason(teamId, seasonId, in.inSeason());
-        return ResponseEntity.noContent().build();
+    public Dto.TeamInSeasonResult setTeamInSeason(@PathVariable UUID seasonId, @PathVariable UUID teamId, @RequestBody Requests.TeamInSeason in) {
+        return new Dto.TeamInSeasonResult(teamsPlayers.setInSeason(teamId, seasonId, in.inSeason(), in.copyPlayers()));
     }
 
     // ---------- Futbolchilar ----------

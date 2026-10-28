@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { activeSuspensions } from "@/domain/discipline"
 import { useSeason } from "@/hooks/use-season"
 import { useSeasonData } from "@/hooks/use-season-data"
-import { formatDateTime, SEASON_STATUS_LABEL } from "@/lib/format"
+import { formatDateTime, SEASON_STATUS_LABEL, seasonLabel } from "@/lib/format"
 import { canEnterResults, canManageCompetition, canOpen } from "@/lib/roles"
 
 const QUICK = [
@@ -44,7 +44,7 @@ export default function DashboardPage() {
     <div className="mx-auto max-w-6xl">
       <AdminPageHeader
         title="Boshqaruv paneli"
-        description={`${data.season.year}-yil, ${data.season.name} — ${SEASON_STATUS_LABEL[data.season.status].toLowerCase()}`}
+        description={`${seasonLabel(data.season)} — ${SEASON_STATUS_LABEL[data.season.status].toLowerCase()}`}
       />
       <ReadOnlyBanner />
 

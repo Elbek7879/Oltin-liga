@@ -11,6 +11,7 @@ import uz.payariq.liga.model.LeagueGroup;
 import uz.payariq.liga.model.Match;
 import uz.payariq.liga.model.Player;
 import uz.payariq.liga.model.RosterEntry;
+import uz.payariq.liga.model.Season;
 import uz.payariq.liga.model.SeasonTeam;
 import uz.payariq.liga.model.Team;
 import uz.payariq.liga.repo.AppearanceRepository;
@@ -103,15 +104,27 @@ public class TeamPlayerService {
         audit.record("Jamoa", "«" + t.name + "» jamoasi o‘chirildi", "TEAM", teamId);
     }
 
+    /** Tarkibsiz: ariza qabul qilinganda tarkib arizadan olinadi */
     public void setInSeason(UUID teamId, UUID seasonId, boolean inSeason) {
+        setInSeason(teamId, seasonId, inSeason, false);
+    }
+
+    /**
+     * Jamoani mavsumga qo'shadi yoki chiqaradi. withPlayers — jamoa oxirgi ishtirok etgan mavsumdagi tarkibi bilan qo'shiladi.
+     * Qaytaradi: ko'chirilgan futbolchilar soni
+     */
+    public int setInSeason(UUID teamId, UUID seasonId, boolean inSeason, boolean withPlayers) {
         loader.editableSeason(seasonId);
         Team t = team(teamId);
         SeasonTeam st = seasonTeams.findBySeasonIdAndTeamId(seasonId, teamId).orElse(null);
-        if (inSeason == (st != null)) return;
+        if (inSeason == (st != null)) return 0;
         ensureTeamListOpen(seasonId, inSeason ? "yangi jamoa qo‘shib" : "jamoani mavsumdan chiqarib");
+        int copied = 0;
         if (inSeason && st == null) {
-            addToSeason(t, seasonId);
-            audit.record("Jamoa", "«" + t.name + "» mavsumga qo‘shildi", "TEAM", teamId);
+            SeasonTeam added = addToSeason(t, seasonId);
+            SeasonTeam previous = withPlayers ? previousEntry(teamId, seasonId) : null;
+            if (previous != null) copied = copyRoster(previous, added);
+            audit.record("Jamoa", "«" + t.name + "» mavsumga qo‘shildi" + (copied > 0 ? " (oldingi tarkibidan " + copied + " ta futbolchi bilan)" : ""), "TEAM", teamId);
         } else if (!inSeason && st != null) {
             if (matches.existsInvolving(List.of(st.getId()))) {
                 throw ApiException.conflict("«" + t.name + "» uchun bu mavsumda o‘yinlar belgilangan. Avval o‘sha o‘yinlarni o‘chiring.");
@@ -119,6 +132,44 @@ public class TeamPlayerService {
             removeSeasonTeam(st);
             audit.record("Jamoa", "«" + t.name + "» mavsumdan chiqarildi", "TEAM", teamId);
         }
+        return copied;
+    }
+
+    /** Jamoaning boshqa mavsumdagi eng so'nggi ishtiroki (sinov mavsumlari hisobga olinmaydi) */
+    private SeasonTeam previousEntry(UUID teamId, UUID exceptSeasonId) {
+        SeasonTeam best = null;
+        int bestNumber = Integer.MIN_VALUE;
+        for (SeasonTeam st : seasonTeams.findByTeamId(teamId)) {
+            if (st.seasonId.equals(exceptSeasonId)) continue;
+            Season s = loader.season(st.seasonId);
+            if (s.test || s.number <= bestNumber) continue;
+            best = st;
+            bestNumber = s.number;
+        }
+        return best;
+    }
+
+    /**
+     * Tarkibni yangi mavsumga ko'chiradi: futbolchilar raqamlari bilan, sardor va murabbiy.
+     * Shu mavsumda boshqa jamoa tarkibida turgan futbolchi ko'chirilmaydi (u jamoasini almashtirgan). Qaytaradi: ko'chirilganlar soni
+     */
+    public int copyRoster(SeasonTeam from, SeasonTeam to) {
+        int copied = 0;
+        boolean captainCopied = false;
+        for (RosterEntry r : rosters.findBySeasonTeamId(from.getId())) {
+            if (rosters.findBySeasonIdAndPlayerId(to.seasonId, r.playerId).isPresent()) continue;
+            RosterEntry copy = new RosterEntry();
+            copy.seasonId = to.seasonId;
+            copy.seasonTeamId = to.getId();
+            copy.playerId = r.playerId;
+            copy.shirtNumber = r.shirtNumber;
+            rosters.save(copy);
+            copied++;
+            if (r.playerId.equals(from.captainId)) captainCopied = true;
+        }
+        if (captainCopied) to.captainId = from.captainId;
+        to.coach = from.coach;
+        return copied;
     }
 
     /** Bir xil nomli ikkita jamoa bo'lmaydi: katta-kichik harf, o‘/g‘ tutuq belgisi va ortiqcha bo'shliq farq qilmaydi */
@@ -134,13 +185,13 @@ public class TeamPlayerService {
                 + "Jamoa esdan chiqqan bo‘lsa va hali birorta natija kiritilmagan bo‘lsa, «Guruhlar» bo‘limida qur’ani bekor qiling.");
     }
 
-    private void addToSeason(Team t, UUID seasonId) {
+    private SeasonTeam addToSeason(Team t, UUID seasonId) {
         SeasonTeam st = new SeasonTeam();
         st.seasonId = seasonId;
         st.teamId = t.getId();
         st.name = t.name;
         st.shortName = t.shortName;
-        seasonTeams.save(st);
+        return seasonTeams.save(st);
     }
 
     private void removeSeasonTeam(SeasonTeam st) {

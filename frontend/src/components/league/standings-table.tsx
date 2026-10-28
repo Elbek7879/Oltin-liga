@@ -118,7 +118,8 @@ export function StandingsTable({
                 <td className={cn("sticky left-9 z-10 py-2 pr-2", highlighted ? "bg-gold-soft" : "bg-card")}>
                   <Link
                     to={team ? `/jamoalar/${team.teamId}` : "#"}
-                    className="flex min-w-0 items-center gap-2 rounded-sm font-medium hover:underline"
+                    // -my-2 py-2: bosiladigan joy katakning butun balandligi, qator balandligi o'zgarmaydi
+                    className="-my-2 flex min-w-0 items-center gap-2 rounded-sm py-2 font-medium hover:underline"
                   >
                     <TeamCrest team={team} size="sm" />
                     <span className="truncate">{team?.name}</span>

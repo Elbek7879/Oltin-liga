@@ -1,25 +1,71 @@
 import { CalendarRange, Crown, FlaskConical, Flag, LoaderCircle, Play, Plus, Trash, TriangleAlert } from "lucide-react"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useSearchParams } from "react-router"
 import { toast } from "sonner"
 import { api } from "@/api/client"
-import { useAdminMutation, useFinishPreview, useMe, useSeasonDeletePreview } from "@/api/hooks"
+import { useAdminMutation, useAdminTeams, useFinishPreview, useMe, useSeasonDeletePreview } from "@/api/hooks"
 import { defaultSeasonRules } from "@/api/defaults"
+import type { AdminTeamRow } from "@/api/types"
 import { AdminPageHeader, Field, runAction } from "@/components/admin/admin-ui"
-import { EmptyState } from "@/components/league/states"
+import { EmptyState, ErrorState, ListSkeleton } from "@/components/league/states"
 import { TeamCrest } from "@/components/league/team-crest"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import type { Season } from "@/domain/types"
+import type { ID, Season } from "@/domain/types"
 import { useSeason } from "@/hooks/use-season"
-import { formatDate, SEASON_STATUS_LABEL } from "@/lib/format"
+import { formatDate, SEASON_STATUS_LABEL, seasonLabel } from "@/lib/format"
 import { isSuperAdmin } from "@/lib/roles"
 import { cn } from "@/lib/utils"
 
 const NONE = "__none__"
+
+/**
+ * Ko'chiriladigan jamoalar. Odatda deyarli hamma jamoa keyingi mavsumda ham qatnashadi — hammasi belgilangan,
+ * qatnashmaydiganlari belgidan chiqariladi.
+ */
+function CopyTeamsPicker({ teams, excluded, onExcludedChange }: { teams: AdminTeamRow[]; excluded: Set<ID>; onExcludedChange: (next: Set<ID>) => void }) {
+  const chosen = teams.filter((t) => !excluded.has(t.id))
+  const players = chosen.reduce((n, t) => n + t.playersCount, 0)
+  const all = chosen.length === teams.length
+  const toggle = (id: ID, on: boolean) => {
+    const next = new Set(excluded)
+    if (on) next.delete(id)
+    else next.add(id)
+    onExcludedChange(next)
+  }
+  return (
+    <fieldset className="min-w-0 space-y-2">
+      <legend className="text-sm font-semibold">Qaysi jamoalar qatnashadi?</legend>
+      <p className="text-xs text-muted-foreground">
+        Belgilangan jamoalar futbolchilari, raqamlari, sardori va murabbiyi bilan ko‘chadi. Bu mavsumda qatnashmaydiganlarini belgidan chiqaring — keyinroq qaytsa, «Jamoalar»
+        bo‘limidan oldingi tarkibi bilan qo‘shiladi.
+      </p>
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <p className="text-sm" aria-live="polite">
+          <span className="font-semibold">{chosen.length}</span> / {teams.length} ta jamoa, {players} ta futbolchi
+        </p>
+        <Button type="button" variant="ghost" onClick={() => onExcludedChange(all ? new Set(teams.map((t) => t.id)) : new Set())}>
+          {all ? "Hammasini olib tashlash" : "Hammasini belgilash"}
+        </Button>
+      </div>
+      <ul className="max-h-64 divide-y divide-border overflow-y-auto rounded-xl border border-border">
+        {teams.map((t) => (
+          <li key={t.id}>
+            <label htmlFor={`ns-team-${t.id}`} className="flex min-h-11 cursor-pointer items-center gap-3 px-3 py-1.5 transition-colors duration-150 hover:bg-muted/60">
+              <Checkbox id={`ns-team-${t.id}`} checked={!excluded.has(t.id)} onCheckedChange={(v) => toggle(t.id, v === true)} />
+              <TeamCrest team={t} size="xs" />
+              <span className="min-w-0 flex-1 truncate text-sm">{t.name}</span>
+              <span className="shrink-0 text-xs text-muted-foreground">{t.playersCount} futbolchi</span>
+            </label>
+          </li>
+        ))}
+      </ul>
+    </fieldset>
+  )
+}
 
 function NewSeasonDialog({ open, onOpenChange, seasons }: { open: boolean; onOpenChange: (v: boolean) => void; seasons: Season[] }) {
   // Sinov mavsumlari raqam va jamoalar taklifida hisobga olinmaydi
@@ -34,6 +80,11 @@ function NewSeasonDialog({ open, onOpenChange, seasons }: { open: boolean; onOpe
   const [end, setEnd] = useState(`${nextYear}-07-31`)
   const [legs, setLegs] = useState("1")
   const [copyFrom, setCopyFrom] = useState(last?.id ?? NONE)
+  // Belgidan chiqarilgan (bu mavsumda qatnashmaydigan) jamoalar
+  const [excluded, setExcluded] = useState<Set<ID>>(new Set())
+  const source = useAdminTeams(copyFrom === NONE ? undefined : copyFrom)
+  const copyable = useMemo(() => (source.data ?? []).filter((t) => t.inSeason && t.active), [source.data])
+  const copyCount = copyFrom === NONE ? 0 : copyable.filter((t) => !excluded.has(t.id)).length
   const [formError, setFormError] = useState<string | null>(null)
   const { setSeasonId } = useSeason()
   const mutation = useAdminMutation(() =>
@@ -44,20 +95,27 @@ function NewSeasonDialog({ open, onOpenChange, seasons }: { open: boolean; onOpe
       endDate: end,
       rules: { ...defaultSeasonRules(), legs: legs === "2" ? 2 : 1 },
       copyTeamsFromSeasonId: copyFrom === NONE ? null : copyFrom,
+      // Hammasi belgilangan bo'lsa ro'yxat yuborilmaydi — server o'sha mavsumning barcha jamoalarini ko'chiradi
+      copyTeamIds: copyFrom === NONE || excluded.size === 0 ? null : copyable.filter((t) => !excluded.has(t.id)).map((t) => t.id),
       test,
     }),
   )
+  const chooseSource = (id: string) => {
+    setCopyFrom(id)
+    setExcluded(new Set())
+  }
   const toggleTest = (on: boolean) => {
     setTest(on)
     if (on && name === defaultName) setName("Sinov mavsumi")
     if (!on && name === "Sinov mavsumi") setName(defaultName)
-    if (on) setCopyFrom(NONE)
+    if (on) chooseSource(NONE)
   }
   const submit = async () => {
     setFormError(null)
     if (!/^\d{4}$/.test(year)) return setFormError("Yilni 4 ta raqam bilan kiriting.")
     if (end < start) return setFormError("Tugash sanasi boshlanish sanasidan keyin bo‘lsin.")
-    const s = await runAction(() => mutation.mutateAsync(undefined), test ? `«${name}» sinov mavsumi yaratildi` : `«${name}» yaratildi`)
+    const copied = copyCount > 0 ? `, ${copyCount} ta jamoa tarkibi bilan ko‘chirildi` : ""
+    const s = await runAction(() => mutation.mutateAsync(undefined), test ? `«${name}» sinov mavsumi yaratildi` : `«${name}» yaratildi${copied}`)
     if (s) {
       setSeasonId(s.id)
       onOpenChange(false)
@@ -110,16 +168,26 @@ function NewSeasonDialog({ open, onOpenChange, seasons }: { open: boolean; onOpe
               </SelectContent>
             </Select>
           </Field>
-          <Field label="Jamoalarni ko‘chirish" htmlFor="ns-copy" hint="Jamoalar va tarkiblar nusxalanadi">
-            <Select value={copyFrom} onValueChange={setCopyFrom}>
+          <Field label="Jamoalarni ko‘chirish" htmlFor="ns-copy" hint="Jamoalar futbolchilari bilan ko‘chadi">
+            <Select value={copyFrom} onValueChange={chooseSource}>
               <SelectTrigger id="ns-copy" className="w-full"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value={NONE}>Bo‘sh boshlash</SelectItem>
-                {seasons.map((s) => <SelectItem key={s.id} value={s.id}>{s.year}-yil, {s.name}{s.test ? " (sinov)" : ""} jamoalari</SelectItem>)}
+                {seasons.map((s) => <SelectItem key={s.id} value={s.id}>{seasonLabel(s)}{s.test ? " (sinov)" : ""} jamoalari</SelectItem>)}
               </SelectContent>
             </Select>
           </Field>
         </div>
+        {copyFrom !== NONE &&
+          (source.isLoading ? (
+            <ListSkeleton rows={4} />
+          ) : source.error ? (
+            <ErrorState message={source.error.message} onRetry={() => source.refetch()} />
+          ) : copyable.length > 0 ? (
+            <CopyTeamsPicker teams={copyable} excluded={excluded} onExcludedChange={setExcluded} />
+          ) : (
+            <p className="text-sm text-muted-foreground">Tanlangan mavsumda jamoa yo‘q — yangi mavsum bo‘sh boshlanadi.</p>
+          ))}
         {formError && <p role="alert" className="text-sm text-destructive">{formError}</p>}
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Bekor qilish</Button>
@@ -322,7 +390,7 @@ export default function AdminSeasonsPage() {
             <CalendarRange className="hidden size-6 text-muted-foreground sm:block" aria-hidden="true" />
             <div className="min-w-0 flex-1">
               <p className="font-display text-xl">
-                {s.year}-yil, {s.name}
+                {seasonLabel(s)}
               </p>
               <p className="text-sm text-muted-foreground">
                 {formatDate(s.startDate)} — {formatDate(s.endDate)}, {s.rules.legs === 2 ? "ikki davrali" : "bir davrali"}

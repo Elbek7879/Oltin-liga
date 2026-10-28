@@ -1,4 +1,5 @@
 import type { SeasonBundle } from "@/api/types"
+import { seasonLabel } from "./format"
 import { playoffOverview } from "./playoff-overview"
 
 export type StepState = "done" | "current" | "todo" | "attention"
@@ -34,7 +35,7 @@ export function seasonRoadmap(bundle: SeasonBundle): RoadmapStep[] {
     {
       key: "season",
       title: "Mavsumni boshlash",
-      detail: season.status === "DRAFT" ? "Mavsum tayyorlanmoqda — «Boshlash» bosilgach saytda joriy mavsum bo‘ladi" : `${season.year}-yil, ${season.name} ochilgan`,
+      detail: season.status === "DRAFT" ? "Mavsum tayyorlanmoqda — «Boshlash» bosilgach saytda joriy mavsum bo‘ladi" : `${seasonLabel(season)} ochilgan`,
       done: season.status !== "DRAFT",
       action: { label: "Mavsumlar", to: "/admin/mavsumlar" },
     },

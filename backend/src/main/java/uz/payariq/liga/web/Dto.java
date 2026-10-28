@@ -286,6 +286,10 @@ public final class Dto {
     public record Created(int created) {
     }
 
+    /** Jamoa mavsumga qo'shilganda oldingi tarkibidan ko'chirilgan futbolchilar soni */
+    public record TeamInSeasonResult(int copiedPlayers) {
+    }
+
     public record CreatedId(UUID id) {
     }
 

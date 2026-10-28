@@ -97,6 +97,11 @@ export const SEASON_STATUS_LABEL: Record<SeasonStatus, string> = {
   FINISHED: "Yakunlangan",
 }
 
+/** «2027-yil, 2-mavsum»; nomida yil bo'lsa (masalan, «2027-yil mavsumi») — yil takrorlanmaydi */
+export function seasonLabel(season: { year: number; name: string }) {
+  return season.name.includes(String(season.year)) ? season.name : `${season.year}-yil, ${season.name}`
+}
+
 export const POSITION_LABEL: Record<Position, string> = {
   GK: "Darvozabon",
   DF: "Himoyachi",

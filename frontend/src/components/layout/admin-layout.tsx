@@ -339,7 +339,7 @@ function AdminLayoutInner() {
             >
               <Menu aria-hidden="true" />
             </Button>
-            <Link to="/admin" className="flex items-center gap-2 lg:hidden">
+            <Link to="/admin" className="flex min-h-11 items-center gap-2 lg:hidden">
               <LeagueMark className="size-8" />
               <span className="font-display text-lg text-gold-400">Boshqaruv</span>
             </Link>

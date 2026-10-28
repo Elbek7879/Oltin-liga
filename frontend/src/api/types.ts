@@ -268,6 +268,8 @@ export interface SeasonInput {
   endDate: string
   rules: SeasonRules
   copyTeamsFromSeasonId?: ID | null
+  /** Ko'chiriladigan jamoalar (jamoa id). Berilmasa — o'sha mavsumning barcha faol jamoalari */
+  copyTeamIds?: ID[] | null
   /** Sinov mavsumi — saytda ko'rinmaydi, keyin butunlay o'chiriladi */
   test?: boolean
 }
@@ -500,7 +502,8 @@ export interface LeagueApi {
   createTeam(input: TeamInput, addToSeasonId?: ID | null): Promise<Team>
   updateTeam(teamId: ID, input: TeamInput): Promise<Team>
   deleteTeam(teamId: ID): Promise<void>
-  setTeamInSeason(teamId: ID, seasonId: ID, inSeason: boolean): Promise<void>
+  /** withPlayers (standart — ha): jamoa oxirgi ishtirok etgan mavsumdagi tarkibi bilan qo'shiladi. Qaytaradi: ko'chirilgan futbolchilar soni */
+  setTeamInSeason(teamId: ID, seasonId: ID, inSeason: boolean, withPlayers?: boolean): Promise<{ copiedPlayers: number }>
 
   listPlayersAdmin(seasonId: ID): Promise<AdminPlayerRow[]>
   /** Qaytaradi: yangi futbolchi id (natija kiritishda gol darhol uning nomiga yoziladi) */

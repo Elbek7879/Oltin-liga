@@ -1,7 +1,7 @@
 import type { TeamView } from "@/api/types"
 import type { Match, MatchEvent } from "@/domain/types"
 import type { SeasonIndex } from "@/hooks/use-season-data"
-import { dateWords, formatDate, formatTime, localDateKey, slugify } from "./format"
+import { dateWords, formatDate, formatTime, localDateKey, seasonLabel, slugify } from "./format"
 import { liveLabel } from "./live"
 import { scoreNote, sideName, stageLabel, totalScore, winnerSide } from "./match"
 import { toCyrillic } from "./translit"
@@ -105,7 +105,7 @@ export function matchImageData(match: Match, index: SeasonIndex, host = typeof w
   return {
     kind,
     badge: kind === "result" ? "Yakuniy hisob" : kind === "live" ? `Jonli${live ? `, ${live}` : ""}` : "O‘yin anonsi",
-    season: `${season.year}-yil, ${season.name}`,
+    season: seasonLabel(season),
     stage: stageLabel(match, index),
     home: side("home"),
     away: side("away"),

@@ -143,7 +143,7 @@ export const httpApi: LeagueApi = {
     request("POST", adm(`/teams${addToSeasonId ? `?addToSeasonId=${enc(addToSeasonId)}` : ""}`), input),
   updateTeam: (teamId, input) => request("PUT", adm(`/teams/${enc(teamId)}`), input),
   deleteTeam: (teamId) => request("DELETE", adm(`/teams/${enc(teamId)}`)),
-  setTeamInSeason: (teamId, seasonId, inSeason) => request("PUT", adm(`/seasons/${enc(seasonId)}/teams/${enc(teamId)}`), { inSeason }),
+  setTeamInSeason: (teamId, seasonId, inSeason, withPlayers = true) => request("PUT", adm(`/seasons/${enc(seasonId)}/teams/${enc(teamId)}`), { inSeason, withPlayers }),
   listPlayersAdmin: (seasonId) => request("GET", adm(`/seasons/${enc(seasonId)}/players`)),
   createPlayer: (seasonId, input) => request("POST", adm(`/seasons/${enc(seasonId)}/players`), input),
   createPlayers: (seasonId, input) => request("POST", adm(`/seasons/${enc(seasonId)}/players/bulk`), input),

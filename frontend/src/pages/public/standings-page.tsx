@@ -3,13 +3,13 @@ import { useState } from "react"
 import { Link } from "react-router"
 import { StandingsTable } from "@/components/league/standings-table"
 import { EmptyState, ErrorState, PageHeader, PageSkeleton } from "@/components/league/states"
-import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { qualifiersFor } from "@/domain/playoff"
 import { TIEBREAKER_LABELS } from "@/domain/standings"
 import { useMyTeam } from "@/hooks/use-my-team"
 import { useSeasonData } from "@/hooks/use-season-data"
 import { useMediaQuery } from "@/hooks/use-media-query"
+import { seasonLabel } from "@/lib/format"
 
 export default function StandingsPage() {
   const { index, isLoading, error, refetch } = useSeasonData()
@@ -29,13 +29,11 @@ export default function StandingsPage() {
 
   return (
     <div className="container-page pt-5 md:pt-8">
-      <PageHeader title="Turnir jadvali" description={`${season.year}-yil, ${season.name}. Jadval har bir yakunlangan o‘yindan keyin avtomatik yangilanadi.`}>
-        <div className="flex items-center gap-2 md:hidden">
-          <Switch id="full-table" checked={full} onCheckedChange={setFull} />
-          <Label htmlFor="full-table" className="text-sm">
-            Barcha ustunlar
-          </Label>
-        </div>
+      <PageHeader title="Turnir jadvali" description={`${seasonLabel(season)}. Jadval har bir yakunlangan o‘yindan keyin avtomatik yangilanadi.`}>
+        <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm md:hidden">
+          <Switch checked={full} onCheckedChange={setFull} />
+          Barcha ustunlar
+        </label>
       </PageHeader>
 
       {groups.length === 0 ? (

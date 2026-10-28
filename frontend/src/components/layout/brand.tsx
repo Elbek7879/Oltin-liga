@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useScript } from "@/hooks/use-script"
 import { useSeason } from "@/hooks/use-season"
 import { useTheme } from "@/hooks/use-theme"
+import { seasonLabel } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 /**
@@ -102,7 +103,7 @@ export function SeasonSelect({ className, tone = "band", compact = false }: { cl
             <>
               <span className={cn("sm:hidden", compact && "lg:max-xl:inline")}>{season.year}</span>
               <span className={cn("hidden sm:inline", compact && "lg:max-xl:hidden")}>
-                {season.year}-yil, {season.name}
+                {seasonLabel(season)}
               </span>
             </>
           )}
@@ -111,7 +112,7 @@ export function SeasonSelect({ className, tone = "band", compact = false }: { cl
       <SelectContent align="end">
         {seasons.map((s) => (
           <SelectItem key={s.id} value={s.id}>
-            {s.year}-yil, {s.name}
+            {seasonLabel(s)}
             {s.test ? " (sinov)" : s.status === "ACTIVE" ? " (joriy)" : ""}
           </SelectItem>
         ))}

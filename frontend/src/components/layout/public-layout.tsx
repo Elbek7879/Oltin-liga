@@ -210,6 +210,9 @@ function ArchiveBanner() {
   )
 }
 
+/** Telefonda barmoq bilan bosish uchun kamida 44px balandlik */
+const FOOTER_LINK = "inline-flex min-h-11 items-center hover:text-foreground md:min-h-0"
+
 function Footer() {
   const { data: sponsors = [] } = useSponsors()
   const { data: settings } = useSettings()
@@ -219,13 +222,13 @@ function Footer() {
         <div className="border-b border-border">
           <div className="container-page py-5">
             <p className="mb-3 text-xs text-muted-foreground">Liga homiylari</p>
-            <ul className="flex flex-wrap items-center gap-x-6 gap-y-2">
+            <ul className="flex flex-wrap items-center gap-x-6 md:gap-y-2">
               {sponsors.map((s) => (
                 <li key={s.id}>
                   <Link
                     to="/homiylar"
                     className={cn(
-                      "font-display text-muted-foreground transition-colors hover:text-foreground",
+                      "inline-flex min-h-11 items-center font-display text-muted-foreground transition-colors hover:text-foreground md:min-h-0",
                       s.tier === "GENERAL" ? "text-lg text-foreground" : "text-md",
                     )}
                   >
@@ -248,15 +251,15 @@ function Footer() {
           </div>
         </div>
         <nav aria-label="Pastki havolalar">
-          <ul className="flex flex-wrap gap-x-4 gap-y-2">
-            <li><Link className="hover:text-foreground" to="/ramziy-jamoa">Ramziy jamoa</Link></li>
-            <li><Link className="hover:text-foreground" to="/nizom">Musobaqa nizomi</Link></li>
-            <li><Link className="hover:text-foreground" to="/liga-haqida">Liga haqida</Link></li>
-            <li><Link className="hover:text-foreground" to="/murojaat">Murojaat va arizalar</Link></li>
-            <li><Link className="hover:text-foreground" to="/homiylar">Homiy bo‘lish</Link></li>
-            <li><Link className="hover:text-foreground" to="/mavsumlar">Arxiv</Link></li>
-            <li><Link className="hover:text-foreground" to="/maxfiylik">Maxfiylik siyosati</Link></li>
-            <li><Link className="hover:text-foreground" to="/admin">Tashkilotchilar uchun</Link></li>
+          <ul className="flex flex-wrap gap-x-4 md:gap-y-2">
+            <li><Link className={FOOTER_LINK} to="/ramziy-jamoa">Ramziy jamoa</Link></li>
+            <li><Link className={FOOTER_LINK} to="/nizom">Musobaqa nizomi</Link></li>
+            <li><Link className={FOOTER_LINK} to="/liga-haqida">Liga haqida</Link></li>
+            <li><Link className={FOOTER_LINK} to="/murojaat">Murojaat va arizalar</Link></li>
+            <li><Link className={FOOTER_LINK} to="/homiylar">Homiy bo‘lish</Link></li>
+            <li><Link className={FOOTER_LINK} to="/mavsumlar">Arxiv</Link></li>
+            <li><Link className={FOOTER_LINK} to="/maxfiylik">Maxfiylik siyosati</Link></li>
+            <li><Link className={FOOTER_LINK} to="/admin">Tashkilotchilar uchun</Link></li>
           </ul>
         </nav>
       </div>

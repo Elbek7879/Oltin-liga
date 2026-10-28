@@ -210,12 +210,20 @@ public class PlayoffService {
         sync(seasonId);
     }
 
+    /**
+     * Qur'a natijasini saqlaydi. Bir o'rinda (masalan, guruh g'oliblari orasida) yoki bir guruhda bir-biridan alohida
+     * bir nechta teng holat bo'lishi mumkin — har birining o'z qur'asi bor. Shuning uchun yangi tartib faqat shu jamoalar
+     * uchun yangilanadi, boshqa teng holatlarning natijasi saqlanib qoladi (aks holda biri ikkinchisini o'chirib, setka tuzilmay qoladi).
+     */
     private void saveLot(SeasonData d, String scope, List<UUID> order, boolean automatic) {
         UUID seasonId = d.season().getId();
         TiebreakLot lot = lots.findBySeasonIdAndScope(seasonId, scope).orElseGet(TiebreakLot::new);
         lot.seasonId = seasonId;
         lot.scope = scope;
-        lot.setOrder(order);
+        List<UUID> merged = new ArrayList<>(lot.order());
+        merged.removeAll(order);
+        merged.addAll(order);
+        lot.setOrder(merged);
         lots.save(lot);
         if (automatic) {
             String names = order.stream().map(d::teamName).collect(Collectors.joining(", "));

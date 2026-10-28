@@ -1,19 +1,19 @@
 package uz.payariq.liga.service;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import uz.payariq.liga.common.ApiException;
 import uz.payariq.liga.domain.AwardType;
 import uz.payariq.liga.domain.SeasonStatus;
-import uz.payariq.liga.model.RosterEntry;
 import uz.payariq.liga.model.Season;
 import uz.payariq.liga.model.SeasonAward;
 import uz.payariq.liga.model.SeasonTeam;
 import uz.payariq.liga.model.Team;
-import uz.payariq.liga.repo.RosterEntryRepository;
 import uz.payariq.liga.repo.SeasonAwardRepository;
 import uz.payariq.liga.repo.SeasonRepository;
 import uz.payariq.liga.repo.SeasonTeamRepository;
@@ -32,7 +32,7 @@ public class SeasonService {
     private final SeasonRepository seasons;
     private final SeasonTeamRepository seasonTeams;
     private final TeamRepository teams;
-    private final RosterEntryRepository rosters;
+    private final TeamPlayerService teamPlayers;
     private final SeasonAwardRepository awards;
     private final SeasonDataLoader loader;
     private final AdminQueryService queries;
@@ -40,12 +40,12 @@ public class SeasonService {
     private final OutboxService outbox;
     private final PlayoffService playoffs;
 
-    public SeasonService(SeasonRepository seasons, SeasonTeamRepository seasonTeams, TeamRepository teams, RosterEntryRepository rosters,
+    public SeasonService(SeasonRepository seasons, SeasonTeamRepository seasonTeams, TeamRepository teams, TeamPlayerService teamPlayers,
                          SeasonAwardRepository awards, SeasonDataLoader loader, AdminQueryService queries, AuditService audit, OutboxService outbox, PlayoffService playoffs) {
         this.seasons = seasons;
         this.seasonTeams = seasonTeams;
         this.teams = teams;
-        this.rosters = rosters;
+        this.teamPlayers = teamPlayers;
         this.awards = awards;
         this.loader = loader;
         this.queries = queries;
@@ -67,8 +67,12 @@ public class SeasonService {
         s.status = SeasonStatus.DRAFT;
         if (in.rules() != null) applyRules(s, in.rules());
         seasons.save(s);
+        int copiedTeams = 0;
         if (in.copyTeamsFromSeasonId() != null) {
+            // Odatda jamoalarning ko'pchiligi keyingi mavsumda ham qatnashadi: tanlanganlari futbolchilari, raqamlari, sardori va murabbiyi bilan ko'chadi
+            Set<UUID> chosen = in.copyTeamIds() == null ? null : new HashSet<>(in.copyTeamIds());
             for (SeasonTeam old : seasonTeams.findBySeasonId(in.copyTeamsFromSeasonId())) {
+                if (chosen != null && !chosen.contains(old.teamId)) continue;
                 Team team = teams.findById(old.teamId).orElseThrow();
                 if (!team.active) continue;
                 SeasonTeam st = new SeasonTeam();
@@ -76,20 +80,13 @@ public class SeasonService {
                 st.teamId = team.getId();
                 st.name = team.name;
                 st.shortName = team.shortName;
-                st.captainId = old.captainId;
-                st.coach = old.coach;
                 seasonTeams.save(st);
-                for (RosterEntry r : rosters.findBySeasonTeamId(old.getId())) {
-                    RosterEntry copy = new RosterEntry();
-                    copy.seasonId = s.getId();
-                    copy.seasonTeamId = st.getId();
-                    copy.playerId = r.playerId;
-                    copy.shirtNumber = r.shirtNumber;
-                    rosters.save(copy);
-                }
+                teamPlayers.copyRoster(old, st);
+                copiedTeams++;
             }
         }
-        audit.record("Mavsum", "«" + s.name + "» (" + s.year + ")" + (s.test ? " sinov mavsumi" : "") + " yaratildi", "SEASON", s.getId());
+        audit.record("Mavsum", "«" + s.name + "» (" + s.year + ")" + (s.test ? " sinov mavsumi" : "") + " yaratildi"
+                + (copiedTeams > 0 ? ", " + copiedTeams + " ta jamoa tarkibi bilan ko‘chirildi" : ""), "SEASON", s.getId());
         return SeasonDto.of(s);
     }
 
